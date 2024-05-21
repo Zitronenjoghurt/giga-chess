@@ -1,4 +1,4 @@
-/// A u64 where every bit represents every cell of the chess board
+/// A u64 where every bit represents one cell of the chess board
 pub struct BitBoard(pub u64);
 
 impl BitBoard {
