@@ -70,240 +70,166 @@ mod tests {
     use super::ChessBoard12;
     use crate::{color::Color, piece::Piece};
 
+    const EXPECTED_PIECES: [Piece; 65] = [
+        Piece::ROOK,
+        Piece::KNIGHT,
+        Piece::BISHOP,
+        Piece::QUEEN,
+        Piece::KING,
+        Piece::BISHOP,
+        Piece::KNIGHT,
+        Piece::ROOK,
+        Piece::PAWN,
+        Piece::PAWN,
+        Piece::PAWN,
+        Piece::PAWN,
+        Piece::PAWN,
+        Piece::PAWN,
+        Piece::PAWN,
+        Piece::PAWN,
+        Piece::NONE,
+        Piece::NONE,
+        Piece::NONE,
+        Piece::NONE,
+        Piece::NONE,
+        Piece::NONE,
+        Piece::NONE,
+        Piece::NONE,
+        Piece::NONE,
+        Piece::NONE,
+        Piece::NONE,
+        Piece::NONE,
+        Piece::NONE,
+        Piece::NONE,
+        Piece::NONE,
+        Piece::NONE,
+        Piece::NONE,
+        Piece::NONE,
+        Piece::NONE,
+        Piece::NONE,
+        Piece::NONE,
+        Piece::NONE,
+        Piece::NONE,
+        Piece::NONE,
+        Piece::NONE,
+        Piece::NONE,
+        Piece::NONE,
+        Piece::NONE,
+        Piece::NONE,
+        Piece::NONE,
+        Piece::NONE,
+        Piece::NONE,
+        Piece::PAWN,
+        Piece::PAWN,
+        Piece::PAWN,
+        Piece::PAWN,
+        Piece::PAWN,
+        Piece::PAWN,
+        Piece::PAWN,
+        Piece::PAWN,
+        Piece::ROOK,
+        Piece::KNIGHT,
+        Piece::BISHOP,
+        Piece::QUEEN,
+        Piece::KING,
+        Piece::BISHOP,
+        Piece::KNIGHT,
+        Piece::ROOK,
+        Piece::NONE,
+    ];
+
+    const EXPECTED_COLORS: [Color; 65] = [
+        Color::WHITE,
+        Color::WHITE,
+        Color::WHITE,
+        Color::WHITE,
+        Color::WHITE,
+        Color::WHITE,
+        Color::WHITE,
+        Color::WHITE,
+        Color::WHITE,
+        Color::WHITE,
+        Color::WHITE,
+        Color::WHITE,
+        Color::WHITE,
+        Color::WHITE,
+        Color::WHITE,
+        Color::WHITE,
+        Color::NONE,
+        Color::NONE,
+        Color::NONE,
+        Color::NONE,
+        Color::NONE,
+        Color::NONE,
+        Color::NONE,
+        Color::NONE,
+        Color::NONE,
+        Color::NONE,
+        Color::NONE,
+        Color::NONE,
+        Color::NONE,
+        Color::NONE,
+        Color::NONE,
+        Color::NONE,
+        Color::NONE,
+        Color::NONE,
+        Color::NONE,
+        Color::NONE,
+        Color::NONE,
+        Color::NONE,
+        Color::NONE,
+        Color::NONE,
+        Color::NONE,
+        Color::NONE,
+        Color::NONE,
+        Color::NONE,
+        Color::NONE,
+        Color::NONE,
+        Color::NONE,
+        Color::NONE,
+        Color::BLACK,
+        Color::BLACK,
+        Color::BLACK,
+        Color::BLACK,
+        Color::BLACK,
+        Color::BLACK,
+        Color::BLACK,
+        Color::BLACK,
+        Color::BLACK,
+        Color::BLACK,
+        Color::BLACK,
+        Color::BLACK,
+        Color::BLACK,
+        Color::BLACK,
+        Color::BLACK,
+        Color::BLACK,
+        Color::NONE,
+    ];
+
     #[test]
     fn test_piece_at_index() {
         let cb = ChessBoard12::default();
-        assert_eq!(cb.piece_at_index(0), Piece::ROOK);
-        assert_eq!(cb.piece_at_index(1), Piece::KNIGHT);
-        assert_eq!(cb.piece_at_index(2), Piece::BISHOP);
-        assert_eq!(cb.piece_at_index(3), Piece::QUEEN);
-        assert_eq!(cb.piece_at_index(4), Piece::KING);
-        assert_eq!(cb.piece_at_index(5), Piece::BISHOP);
-        assert_eq!(cb.piece_at_index(6), Piece::KNIGHT);
-        assert_eq!(cb.piece_at_index(7), Piece::ROOK);
-        assert_eq!(cb.piece_at_index(8), Piece::PAWN);
-        assert_eq!(cb.piece_at_index(9), Piece::PAWN);
-        assert_eq!(cb.piece_at_index(10), Piece::PAWN);
-        assert_eq!(cb.piece_at_index(11), Piece::PAWN);
-        assert_eq!(cb.piece_at_index(12), Piece::PAWN);
-        assert_eq!(cb.piece_at_index(13), Piece::PAWN);
-        assert_eq!(cb.piece_at_index(14), Piece::PAWN);
-        assert_eq!(cb.piece_at_index(15), Piece::PAWN);
-        assert_eq!(cb.piece_at_index(16), Piece::NONE);
-        assert_eq!(cb.piece_at_index(17), Piece::NONE);
-        assert_eq!(cb.piece_at_index(18), Piece::NONE);
-        assert_eq!(cb.piece_at_index(19), Piece::NONE);
-        assert_eq!(cb.piece_at_index(20), Piece::NONE);
-        assert_eq!(cb.piece_at_index(21), Piece::NONE);
-        assert_eq!(cb.piece_at_index(22), Piece::NONE);
-        assert_eq!(cb.piece_at_index(23), Piece::NONE);
-        assert_eq!(cb.piece_at_index(24), Piece::NONE);
-        assert_eq!(cb.piece_at_index(25), Piece::NONE);
-        assert_eq!(cb.piece_at_index(26), Piece::NONE);
-        assert_eq!(cb.piece_at_index(27), Piece::NONE);
-        assert_eq!(cb.piece_at_index(28), Piece::NONE);
-        assert_eq!(cb.piece_at_index(29), Piece::NONE);
-        assert_eq!(cb.piece_at_index(30), Piece::NONE);
-        assert_eq!(cb.piece_at_index(31), Piece::NONE);
-        assert_eq!(cb.piece_at_index(32), Piece::NONE);
-        assert_eq!(cb.piece_at_index(33), Piece::NONE);
-        assert_eq!(cb.piece_at_index(34), Piece::NONE);
-        assert_eq!(cb.piece_at_index(35), Piece::NONE);
-        assert_eq!(cb.piece_at_index(36), Piece::NONE);
-        assert_eq!(cb.piece_at_index(37), Piece::NONE);
-        assert_eq!(cb.piece_at_index(38), Piece::NONE);
-        assert_eq!(cb.piece_at_index(39), Piece::NONE);
-        assert_eq!(cb.piece_at_index(40), Piece::NONE);
-        assert_eq!(cb.piece_at_index(41), Piece::NONE);
-        assert_eq!(cb.piece_at_index(42), Piece::NONE);
-        assert_eq!(cb.piece_at_index(43), Piece::NONE);
-        assert_eq!(cb.piece_at_index(44), Piece::NONE);
-        assert_eq!(cb.piece_at_index(45), Piece::NONE);
-        assert_eq!(cb.piece_at_index(46), Piece::NONE);
-        assert_eq!(cb.piece_at_index(47), Piece::NONE);
-        assert_eq!(cb.piece_at_index(48), Piece::PAWN);
-        assert_eq!(cb.piece_at_index(49), Piece::PAWN);
-        assert_eq!(cb.piece_at_index(50), Piece::PAWN);
-        assert_eq!(cb.piece_at_index(51), Piece::PAWN);
-        assert_eq!(cb.piece_at_index(52), Piece::PAWN);
-        assert_eq!(cb.piece_at_index(53), Piece::PAWN);
-        assert_eq!(cb.piece_at_index(54), Piece::PAWN);
-        assert_eq!(cb.piece_at_index(55), Piece::PAWN);
-        assert_eq!(cb.piece_at_index(56), Piece::ROOK);
-        assert_eq!(cb.piece_at_index(57), Piece::KNIGHT);
-        assert_eq!(cb.piece_at_index(58), Piece::BISHOP);
-        assert_eq!(cb.piece_at_index(59), Piece::QUEEN);
-        assert_eq!(cb.piece_at_index(60), Piece::KING);
-        assert_eq!(cb.piece_at_index(61), Piece::BISHOP);
-        assert_eq!(cb.piece_at_index(62), Piece::KNIGHT);
-        assert_eq!(cb.piece_at_index(63), Piece::ROOK);
-        assert_eq!(cb.piece_at_index(64), Piece::NONE);
+        for i in 0..65 {
+            assert_eq!(cb.piece_at_index(i), EXPECTED_PIECES[i as usize]);
+        }
     }
 
     #[test]
     fn test_color_at_index() {
         let cb = ChessBoard12::default();
-        assert_eq!(cb.color_at_index(0), Color::WHITE);
-        assert_eq!(cb.color_at_index(1), Color::WHITE);
-        assert_eq!(cb.color_at_index(2), Color::WHITE);
-        assert_eq!(cb.color_at_index(3), Color::WHITE);
-        assert_eq!(cb.color_at_index(4), Color::WHITE);
-        assert_eq!(cb.color_at_index(5), Color::WHITE);
-        assert_eq!(cb.color_at_index(6), Color::WHITE);
-        assert_eq!(cb.color_at_index(7), Color::WHITE);
-        assert_eq!(cb.color_at_index(8), Color::WHITE);
-        assert_eq!(cb.color_at_index(9), Color::WHITE);
-        assert_eq!(cb.color_at_index(10), Color::WHITE);
-        assert_eq!(cb.color_at_index(11), Color::WHITE);
-        assert_eq!(cb.color_at_index(12), Color::WHITE);
-        assert_eq!(cb.color_at_index(13), Color::WHITE);
-        assert_eq!(cb.color_at_index(14), Color::WHITE);
-        assert_eq!(cb.color_at_index(15), Color::WHITE);
-        assert_eq!(cb.color_at_index(16), Color::NONE);
-        assert_eq!(cb.color_at_index(17), Color::NONE);
-        assert_eq!(cb.color_at_index(18), Color::NONE);
-        assert_eq!(cb.color_at_index(19), Color::NONE);
-        assert_eq!(cb.color_at_index(20), Color::NONE);
-        assert_eq!(cb.color_at_index(21), Color::NONE);
-        assert_eq!(cb.color_at_index(22), Color::NONE);
-        assert_eq!(cb.color_at_index(23), Color::NONE);
-        assert_eq!(cb.color_at_index(24), Color::NONE);
-        assert_eq!(cb.color_at_index(25), Color::NONE);
-        assert_eq!(cb.color_at_index(26), Color::NONE);
-        assert_eq!(cb.color_at_index(27), Color::NONE);
-        assert_eq!(cb.color_at_index(28), Color::NONE);
-        assert_eq!(cb.color_at_index(29), Color::NONE);
-        assert_eq!(cb.color_at_index(30), Color::NONE);
-        assert_eq!(cb.color_at_index(31), Color::NONE);
-        assert_eq!(cb.color_at_index(32), Color::NONE);
-        assert_eq!(cb.color_at_index(33), Color::NONE);
-        assert_eq!(cb.color_at_index(34), Color::NONE);
-        assert_eq!(cb.color_at_index(35), Color::NONE);
-        assert_eq!(cb.color_at_index(36), Color::NONE);
-        assert_eq!(cb.color_at_index(37), Color::NONE);
-        assert_eq!(cb.color_at_index(38), Color::NONE);
-        assert_eq!(cb.color_at_index(39), Color::NONE);
-        assert_eq!(cb.color_at_index(40), Color::NONE);
-        assert_eq!(cb.color_at_index(41), Color::NONE);
-        assert_eq!(cb.color_at_index(42), Color::NONE);
-        assert_eq!(cb.color_at_index(43), Color::NONE);
-        assert_eq!(cb.color_at_index(44), Color::NONE);
-        assert_eq!(cb.color_at_index(45), Color::NONE);
-        assert_eq!(cb.color_at_index(46), Color::NONE);
-        assert_eq!(cb.color_at_index(47), Color::NONE);
-        assert_eq!(cb.color_at_index(48), Color::BLACK);
-        assert_eq!(cb.color_at_index(49), Color::BLACK);
-        assert_eq!(cb.color_at_index(50), Color::BLACK);
-        assert_eq!(cb.color_at_index(51), Color::BLACK);
-        assert_eq!(cb.color_at_index(52), Color::BLACK);
-        assert_eq!(cb.color_at_index(53), Color::BLACK);
-        assert_eq!(cb.color_at_index(54), Color::BLACK);
-        assert_eq!(cb.color_at_index(55), Color::BLACK);
-        assert_eq!(cb.color_at_index(56), Color::BLACK);
-        assert_eq!(cb.color_at_index(57), Color::BLACK);
-        assert_eq!(cb.color_at_index(58), Color::BLACK);
-        assert_eq!(cb.color_at_index(59), Color::BLACK);
-        assert_eq!(cb.color_at_index(60), Color::BLACK);
-        assert_eq!(cb.color_at_index(61), Color::BLACK);
-        assert_eq!(cb.color_at_index(62), Color::BLACK);
-        assert_eq!(cb.color_at_index(63), Color::BLACK);
-        assert_eq!(cb.color_at_index(64), Color::NONE);
+        for i in 0..65 {
+            assert_eq!(cb.color_at_index(i), EXPECTED_COLORS[i as usize]);
+        }
     }
 
     #[test]
     fn test_piece_and_color_at_index() {
         let cb = ChessBoard12::default();
-        assert_eq!(cb.piece_and_color_at_index(0), (Piece::ROOK, Color::WHITE));
-        assert_eq!(
-            cb.piece_and_color_at_index(1),
-            (Piece::KNIGHT, Color::WHITE)
-        );
-        assert_eq!(
-            cb.piece_and_color_at_index(2),
-            (Piece::BISHOP, Color::WHITE)
-        );
-        assert_eq!(cb.piece_and_color_at_index(3), (Piece::QUEEN, Color::WHITE));
-        assert_eq!(cb.piece_and_color_at_index(4), (Piece::KING, Color::WHITE));
-        assert_eq!(
-            cb.piece_and_color_at_index(5),
-            (Piece::BISHOP, Color::WHITE)
-        );
-        assert_eq!(
-            cb.piece_and_color_at_index(6),
-            (Piece::KNIGHT, Color::WHITE)
-        );
-        assert_eq!(cb.piece_and_color_at_index(7), (Piece::ROOK, Color::WHITE));
-        assert_eq!(cb.piece_and_color_at_index(8), (Piece::PAWN, Color::WHITE));
-        assert_eq!(cb.piece_and_color_at_index(9), (Piece::PAWN, Color::WHITE));
-        assert_eq!(cb.piece_and_color_at_index(10), (Piece::PAWN, Color::WHITE));
-        assert_eq!(cb.piece_and_color_at_index(11), (Piece::PAWN, Color::WHITE));
-        assert_eq!(cb.piece_and_color_at_index(12), (Piece::PAWN, Color::WHITE));
-        assert_eq!(cb.piece_and_color_at_index(13), (Piece::PAWN, Color::WHITE));
-        assert_eq!(cb.piece_and_color_at_index(14), (Piece::PAWN, Color::WHITE));
-        assert_eq!(cb.piece_and_color_at_index(15), (Piece::PAWN, Color::WHITE));
-        assert_eq!(cb.piece_and_color_at_index(16), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(17), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(18), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(19), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(20), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(21), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(22), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(23), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(24), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(25), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(26), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(27), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(28), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(29), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(30), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(31), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(32), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(33), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(34), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(35), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(36), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(37), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(38), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(39), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(40), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(41), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(42), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(43), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(44), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(45), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(46), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(47), (Piece::NONE, Color::NONE));
-        assert_eq!(cb.piece_and_color_at_index(48), (Piece::PAWN, Color::BLACK));
-        assert_eq!(cb.piece_and_color_at_index(49), (Piece::PAWN, Color::BLACK));
-        assert_eq!(cb.piece_and_color_at_index(50), (Piece::PAWN, Color::BLACK));
-        assert_eq!(cb.piece_and_color_at_index(51), (Piece::PAWN, Color::BLACK));
-        assert_eq!(cb.piece_and_color_at_index(52), (Piece::PAWN, Color::BLACK));
-        assert_eq!(cb.piece_and_color_at_index(53), (Piece::PAWN, Color::BLACK));
-        assert_eq!(cb.piece_and_color_at_index(54), (Piece::PAWN, Color::BLACK));
-        assert_eq!(cb.piece_and_color_at_index(55), (Piece::PAWN, Color::BLACK));
-        assert_eq!(cb.piece_and_color_at_index(56), (Piece::ROOK, Color::BLACK));
-        assert_eq!(
-            cb.piece_and_color_at_index(57),
-            (Piece::KNIGHT, Color::BLACK)
-        );
-        assert_eq!(
-            cb.piece_and_color_at_index(58),
-            (Piece::BISHOP, Color::BLACK)
-        );
-        assert_eq!(
-            cb.piece_and_color_at_index(59),
-            (Piece::QUEEN, Color::BLACK)
-        );
-        assert_eq!(cb.piece_and_color_at_index(60), (Piece::KING, Color::BLACK));
-        assert_eq!(
-            cb.piece_and_color_at_index(61),
-            (Piece::BISHOP, Color::BLACK)
-        );
-        assert_eq!(
-            cb.piece_and_color_at_index(62),
-            (Piece::KNIGHT, Color::BLACK)
-        );
-        assert_eq!(cb.piece_and_color_at_index(63), (Piece::ROOK, Color::BLACK));
-        assert_eq!(cb.piece_and_color_at_index(64), (Piece::NONE, Color::NONE));
+        for i in 0..65 {
+            assert_eq!(
+                cb.piece_and_color_at_index(i),
+                (EXPECTED_PIECES[i as usize], EXPECTED_COLORS[i as usize])
+            );
+        }
     }
 }
