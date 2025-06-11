@@ -1,7 +1,37 @@
-use crate::types::bitboard::BitBoard;
-use crate::types::color::{Color, COLORS};
-use crate::types::piece::{Piece, PIECES};
+use crate::engine::bit_board::BitBoard;
+use crate::game::color::{Color, COLORS};
+use crate::game::piece::{Piece, PIECES};
 
+const DEFAULT_BOARD: ChessBoard = ChessBoard([
+    BitBoard::new(0b00000000_00000000_00000000_00000000_00000000_00000000_11111111_00000000),
+    BitBoard::new(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_01000010),
+    BitBoard::new(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00100100),
+    BitBoard::new(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_10000001),
+    BitBoard::new(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00010000),
+    BitBoard::new(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00001000),
+    BitBoard::new(0b00000000_11111111_00000000_00000000_00000000_00000000_00000000_00000000),
+    BitBoard::new(0b01000010_00000000_00000000_00000000_00000000_00000000_00000000_00000000),
+    BitBoard::new(0b00100100_00000000_00000000_00000000_00000000_00000000_00000000_00000000),
+    BitBoard::new(0b10000001_00000000_00000000_00000000_00000000_00000000_00000000_00000000),
+    BitBoard::new(0b00001000_00000000_00000000_00000000_00000000_00000000_00000000_00000000),
+    BitBoard::new(0b00010000_00000000_00000000_00000000_00000000_00000000_00000000_00000000),
+]);
+
+/// A chess board containing 12 bit boards for each piece and color.
+/// Square indexing starts with 0 at A1, 1 at B1, ... and ends with 63 at H8.
+/// The bit boards are indexed as follows:
+/// 0: White Pawns
+/// 1: White Knights
+/// 2: White Bishops
+/// 3: White Rooks
+/// 4: White Queens
+/// 5: White Kings
+/// 6: Black Pawns
+/// 7: Black Knights
+/// 8: Black Bishops
+/// 9: Black Rooks
+/// 10: Black Queens
+/// 11: Black Kings
 #[derive(Debug, Copy, Clone)]
 #[repr(transparent)]
 pub struct ChessBoard([BitBoard; 12]);
@@ -18,6 +48,11 @@ impl ChessBoard {
     }
 
     #[inline(always)]
+    pub const fn default() -> Self {
+        DEFAULT_BOARD
+    }
+
+    #[inline(always)]
     pub fn get_piece_bb(&self, piece: Piece, color: Color) -> BitBoard {
         self.0[piece as usize + (color as usize * 6)]
     }
@@ -30,9 +65,12 @@ impl ChessBoard {
     #[inline(always)]
     pub fn get_color_bb(&self, color: Color) -> BitBoard {
         let base = color as usize * 6;
-        self.0[base..base + 6]
-            .iter()
-            .fold(BitBoard::empty(), |acc, &bb| acc | bb)
+        self.0[base]
+            | self.0[base + 1]
+            | self.0[base + 2]
+            | self.0[base + 3]
+            | self.0[base + 4]
+            | self.0[base + 5]
     }
 
     #[inline(always)]
@@ -51,6 +89,13 @@ impl ChessBoard {
     }
 
     #[inline(always)]
+    pub fn move_piece(&mut self, piece: Piece, color: Color, from: u8, to: u8) {
+        let bb = self.get_piece_bb_mut(piece, color);
+        bb.clear_bit(from);
+        bb.set_bit(to);
+    }
+
+    #[inline(always)]
     pub fn get_piece_at(&self, square: u8) -> Option<(Piece, Color)> {
         for color in COLORS {
             for piece in PIECES {
@@ -65,10 +110,10 @@ impl ChessBoard {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::bitboard::BitBoard;
-    use crate::types::chess_board::ChessBoard;
-    use crate::types::color::Color;
-    use crate::types::piece::Piece;
+    use crate::engine::bit_board::BitBoard;
+    use crate::game::chess_board::ChessBoard;
+    use crate::game::color::Color;
+    use crate::game::piece::Piece;
 
     const BOARDS: [BitBoard; 12] = [
         BitBoard::new(0b000000_000001),
