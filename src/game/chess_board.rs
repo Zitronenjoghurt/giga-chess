@@ -1,14 +1,16 @@
 use crate::engine::bit_board::BitBoard;
+use crate::engine::square::Square;
 use crate::game::color::{Color, COLORS};
 use crate::game::piece::{Piece, PIECES};
+use std::fmt::{Display, Formatter};
 
 const DEFAULT_BOARD: ChessBoard = ChessBoard([
     BitBoard::new(0b00000000_00000000_00000000_00000000_00000000_00000000_11111111_00000000),
     BitBoard::new(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_01000010),
     BitBoard::new(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00100100),
     BitBoard::new(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_10000001),
-    BitBoard::new(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00010000),
     BitBoard::new(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00001000),
+    BitBoard::new(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00010000),
     BitBoard::new(0b00000000_11111111_00000000_00000000_00000000_00000000_00000000_00000000),
     BitBoard::new(0b01000010_00000000_00000000_00000000_00000000_00000000_00000000_00000000),
     BitBoard::new(0b00100100_00000000_00000000_00000000_00000000_00000000_00000000_00000000),
@@ -105,6 +107,29 @@ impl ChessBoard {
             }
         }
         None
+    }
+}
+
+impl Display for ChessBoard {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        for rank in (1..=8).rev() {
+            write!(f, "{} ", rank)?;
+            for file in 1..=8 {
+                let square = Square::from_file_rank(file, rank);
+                if let Some((piece, color)) = self.get_piece_at(square.get_value()) {
+                    write!(f, "{} ", piece.get_icon(color))?;
+                } else {
+                    if square.is_white() {
+                        write!(f, "□ ")?;
+                    } else {
+                        write!(f, "■ ")?;
+                    }
+                };
+            }
+            write!(f, "\n")?;
+        }
+        write!(f, "  A B C D E F G H\n")?;
+        Ok(())
     }
 }
 

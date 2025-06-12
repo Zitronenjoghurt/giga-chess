@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 use std::ops::BitOr;
 
 #[derive(Debug, Copy, Clone)]
@@ -45,6 +46,23 @@ impl BitOr for BitBoard {
 
     fn bitor(self, rhs: Self) -> Self::Output {
         BitBoard::new(self.0 | rhs.0)
+    }
+}
+
+impl Display for BitBoard {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        for y in (0..8).rev() {
+            for x in 0..8 {
+                let index: u8 = x + y * 8;
+                if self.get_bit(index) {
+                    write!(f, "1 ")?;
+                } else {
+                    write!(f, "0 ")?;
+                }
+            }
+            write!(f, "\n")?;
+        }
+        Ok(())
     }
 }
 

@@ -8,8 +8,12 @@ impl Square {
         Self(value)
     }
 
-    pub fn from_rank_file(file: u8, rank: u8) -> Self {
+    pub fn from_file_rank(file: u8, rank: u8) -> Self {
         Self((file - 1) + (rank - 1) * 8)
+    }
+
+    pub fn is_white(&self) -> bool {
+        (self.get_file() + self.get_rank()) % 2 == 0
     }
 
     pub fn get_value(&self) -> u8 {
@@ -112,7 +116,7 @@ impl Square {
         if new_file < 1 || new_file > 8 || new_rank < 1 || new_rank > 8 {
             None
         } else {
-            Some(Square::from_rank_file(new_file as u8, new_rank as u8).get_value())
+            Some(Square::from_file_rank(new_file as u8, new_rank as u8).get_value())
         }
     }
 

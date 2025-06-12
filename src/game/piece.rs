@@ -1,3 +1,5 @@
+use crate::game::color::Color;
+
 pub const PIECES: [Piece; 6] = [
     Piece::Pawn,
     Piece::Knight,
@@ -15,4 +17,28 @@ pub enum Piece {
     Rook = 3,
     Queen = 4,
     King = 5,
+}
+
+impl Piece {
+    pub fn get_icon(&self, color: Color) -> &str {
+        if color == Color::White {
+            match self {
+                Self::Pawn => "♙",
+                Self::Knight => "♘",
+                Self::Bishop => "♗",
+                Self::Rook => "♖",
+                Self::Queen => "♕",
+                Self::King => "♔",
+            }
+        } else {
+            match self {
+                Self::Pawn => "♟",
+                Self::Knight => "♞",
+                Self::Bishop => "♝",
+                Self::Rook => "♜",
+                Self::Queen => "♛",
+                Self::King => "♚",
+            }
+        }
+    }
 }
