@@ -138,6 +138,7 @@ const ROOK_MAGICS: [u64; 64] = [
 ];
 
 pub struct AttackTable {
+    pawn_masks: [[BitBoard; 64]; 2],
     pawn_attacks: [[BitBoard; 64]; 2],
     knight_attacks: [BitBoard; 64],
     king_attacks: [BitBoard; 64],
@@ -152,6 +153,7 @@ pub struct AttackTable {
 impl AttackTable {
     pub fn build() -> Self {
         Self {
+            pawn_masks: build_pawn_masks(),
             pawn_attacks: build_pawn_attacks(),
             knight_attacks: build_knight_attacks(),
             king_attacks: build_king_attacks(),
@@ -164,8 +166,16 @@ impl AttackTable {
         }
     }
 
+    pub fn get_pawn_mask(&self, square: u8, color: Color) -> BitBoard {
+        self.pawn_masks[color as usize][square as usize]
+    }
+
     pub fn get_pawn_attacks(&self, square: u8, color: Color) -> BitBoard {
         self.pawn_attacks[color as usize][square as usize]
+    }
+
+    pub fn get_pawn_king_attack(&self, square: u8, color: Color) -> BitBoard {
+        self.pawn_attacks[color.opposite() as usize][square as usize]
     }
 
     pub fn get_knight_attacks(&self, square: u8) -> BitBoard {
@@ -217,6 +227,28 @@ impl AttackTable {
     pub fn get_queen_attacks(&self, square: u8, occupancy: BitBoard) -> BitBoard {
         self.get_bishop_attacks(square, occupancy) | self.get_rook_attacks(square, occupancy)
     }
+}
+
+pub fn build_pawn_masks() -> [[BitBoard; 64]; 2] {
+    let mut table = [[BitBoard::empty(); 64]; 2];
+
+    for index in 0usize..64 {
+        let square = Square::new(index as u8);
+
+        let mut white_mask = 0u64;
+        if let Some(index) = square.index_up() {
+            white_mask |= 1 << index;
+        }
+        table[Color::White as usize][index] = BitBoard::new(white_mask);
+
+        let mut black_mask = 0u64;
+        if let Some(index) = square.index_down() {
+            black_mask |= 1 << index;
+        }
+        table[Color::Black as usize][index] = BitBoard::new(black_mask);
+    }
+
+    table
 }
 
 pub fn build_pawn_attacks() -> [[BitBoard; 64]; 2] {

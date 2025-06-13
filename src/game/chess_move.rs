@@ -1,4 +1,6 @@
 use crate::game::piece::Piece;
+use crate::game::square::Square;
+use std::fmt::{Display, Formatter};
 
 // https://www.chessprogramming.org/Encoding_Moves
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
@@ -8,6 +10,24 @@ pub struct ChessMove(u16);
 impl ChessMove {
     pub fn new(from: u8, to: u8, move_type: ChessMoveType) -> Self {
         Self(((from as u16) << 10) | ((to as u16) << 4) | (move_type as u16))
+    }
+
+    pub fn all_promotions(from: u8, to: u8) -> Vec<Self> {
+        vec![
+            Self::new(from, to, ChessMoveType::KnightPromotion),
+            Self::new(from, to, ChessMoveType::BishopPromotion),
+            Self::new(from, to, ChessMoveType::RookPromotion),
+            Self::new(from, to, ChessMoveType::QueenPromotion),
+        ]
+    }
+
+    pub fn all_promotions_capture(from: u8, to: u8) -> Vec<Self> {
+        vec![
+            Self::new(from, to, ChessMoveType::KnightPromotionCapture),
+            Self::new(from, to, ChessMoveType::BishopPromotionCapture),
+            Self::new(from, to, ChessMoveType::RookPromotionCapture),
+            Self::new(from, to, ChessMoveType::QueenPromotionCapture),
+        ]
     }
 
     pub fn get_from(&self) -> u8 {
@@ -84,6 +104,32 @@ impl From<u8> for ChessMoveType {
             14 => ChessMoveType::RookPromotionCapture,
             15 => ChessMoveType::QueenPromotionCapture,
             _ => unreachable!(),
+        }
+    }
+}
+
+impl Display for ChessMove {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let from = Square::new(self.get_from()).to_string().to_lowercase();
+        let to = Square::new(self.get_to()).to_string().to_lowercase();
+
+        match self.get_type() {
+            ChessMoveType::Quiet => write!(f, "{}-{}", from, to),
+            ChessMoveType::DoublePawnPush => write!(f, "{} DPP", from),
+            ChessMoveType::KingCastle => write!(f, "KC"),
+            ChessMoveType::QueenCastle => write!(f, "QC"),
+            ChessMoveType::Capture => write!(f, "{}-{} C", from, to),
+            ChessMoveType::EnPassant => write!(f, "{}-{} EP", from, to),
+            ChessMoveType::Reserved6 => write!(f, "R6"),
+            ChessMoveType::Reserved7 => write!(f, "R7"),
+            ChessMoveType::KnightPromotion => write!(f, "{}-{} PN", from, to),
+            ChessMoveType::BishopPromotion => write!(f, "{}-{} PB", from, to),
+            ChessMoveType::RookPromotion => write!(f, "{}-{} PR", from, to),
+            ChessMoveType::QueenPromotion => write!(f, "{}-{} PQ", from, to),
+            ChessMoveType::KnightPromotionCapture => write!(f, "{}-{} PN C", from, to),
+            ChessMoveType::BishopPromotionCapture => write!(f, "{}-{} PB C", from, to),
+            ChessMoveType::RookPromotionCapture => write!(f, "{}-{} PR C", from, to),
+            ChessMoveType::QueenPromotionCapture => write!(f, "{}-{} PQ C", from, to),
         }
     }
 }

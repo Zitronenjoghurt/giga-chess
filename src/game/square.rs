@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 pub const A1: u8 = 0;
 pub const B1: u8 = 1;
 pub const C1: u8 = 2;
@@ -223,5 +225,80 @@ impl Square {
         std::iter::successors(self.index_down_right(), |&idx| {
             Square::new(idx).index_down_right()
         })
+    }
+}
+
+impl Display for Square {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let file = self.get_file();
+        let rank = self.get_rank();
+        let str = match (file, rank) {
+            (1, 1) => "A1".to_string(),
+            (1, 2) => "A2".to_string(),
+            (1, 3) => "A3".to_string(),
+            (1, 4) => "A4".to_string(),
+            (1, 5) => "A5".to_string(),
+            (1, 6) => "A6".to_string(),
+            (1, 7) => "A7".to_string(),
+            (1, 8) => "A8".to_string(),
+            (2, 1) => "B1".to_string(),
+            (2, 2) => "B2".to_string(),
+            (2, 3) => "B3".to_string(),
+            (2, 4) => "B4".to_string(),
+            (2, 5) => "B5".to_string(),
+            (2, 6) => "B6".to_string(),
+            (2, 7) => "B7".to_string(),
+            (2, 8) => "B8".to_string(),
+            (3, 1) => "C1".to_string(),
+            (3, 2) => "C2".to_string(),
+            (3, 3) => "C3".to_string(),
+            (3, 4) => "C4".to_string(),
+            (3, 5) => "C5".to_string(),
+            (3, 6) => "C6".to_string(),
+            (3, 7) => "C7".to_string(),
+            (3, 8) => "C8".to_string(),
+            (4, 1) => "D1".to_string(),
+            (4, 2) => "D2".to_string(),
+            (4, 3) => "D3".to_string(),
+            (4, 4) => "D4".to_string(),
+            (4, 5) => "D5".to_string(),
+            (4, 6) => "D6".to_string(),
+            (4, 7) => "D7".to_string(),
+            (4, 8) => "D8".to_string(),
+            (5, 1) => "E1".to_string(),
+            (5, 2) => "E2".to_string(),
+            (5, 3) => "E3".to_string(),
+            (5, 4) => "E4".to_string(),
+            (5, 5) => "E5".to_string(),
+            (5, 6) => "E6".to_string(),
+            (5, 7) => "E7".to_string(),
+            (5, 8) => "E8".to_string(),
+            (6, 1) => "F1".to_string(),
+            (6, 2) => "F2".to_string(),
+            (6, 3) => "F3".to_string(),
+            (6, 4) => "F4".to_string(),
+            (6, 5) => "F5".to_string(),
+            (6, 6) => "F6".to_string(),
+            (6, 7) => "F7".to_string(),
+            (6, 8) => "F8".to_string(),
+            (7, 1) => "G1".to_string(),
+            (7, 2) => "G2".to_string(),
+            (7, 3) => "G3".to_string(),
+            (7, 4) => "G4".to_string(),
+            (7, 5) => "G5".to_string(),
+            (7, 6) => "G6".to_string(),
+            (7, 7) => "G7".to_string(),
+            (7, 8) => "G8".to_string(),
+            (8, 1) => "H1".to_string(),
+            (8, 2) => "H2".to_string(),
+            (8, 3) => "H3".to_string(),
+            (8, 4) => "H4".to_string(),
+            (8, 5) => "H5".to_string(),
+            (8, 6) => "H6".to_string(),
+            (8, 7) => "H7".to_string(),
+            (8, 8) => "H8".to_string(),
+            _ => unreachable!(),
+        };
+        write!(f, "{}", str)
     }
 }

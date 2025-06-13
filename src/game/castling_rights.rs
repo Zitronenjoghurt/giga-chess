@@ -6,8 +6,8 @@ pub struct CastlingRights {
     pub black_queen_side: bool,
 }
 
-impl CastlingRights {
-    pub const fn new() -> Self {
+impl Default for CastlingRights {
+    fn default() -> Self {
         Self {
             white_king_side: true,
             white_queen_side: true,

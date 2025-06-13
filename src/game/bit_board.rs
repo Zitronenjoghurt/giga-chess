@@ -1,6 +1,6 @@
 use crate::utils::bit_operations::u16_get_bit;
 use std::fmt::{Display, Formatter};
-use std::ops::{BitAnd, BitOr};
+use std::ops::{BitAnd, BitOr, BitXor, Neg, Not};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 #[repr(transparent)]
@@ -52,14 +52,23 @@ impl BitBoard {
     }
 
     #[inline(always)]
-    pub fn pop_lowest_set_bit(&mut self) -> Option<u8> {
+    pub fn get_lowest_set_bit(&self) -> Option<u8> {
         if self.0 == 0 {
             return None;
         }
+        Some(self.0.trailing_zeros() as u8)
+    }
 
-        let lsb_index = self.0.trailing_zeros() as u8;
+    #[inline(always)]
+    pub fn pop_lowest_set_bit(&mut self) -> Option<u8> {
+        let lsb_index = self.get_lowest_set_bit()?;
         self.0 &= self.0 - 1;
         Some(lsb_index)
+    }
+
+    #[inline(always)]
+    pub fn iter_set_bits(&self) -> BitBoardIter {
+        BitBoardIter { bits: self.0 }
     }
 
     pub fn occupancy_variation(mut mask: BitBoard, index: u16) -> BitBoard {
@@ -90,6 +99,41 @@ impl BitAnd for BitBoard {
 
     fn bitand(self, rhs: Self) -> Self::Output {
         BitBoard::new(self.0 & rhs.0)
+    }
+}
+
+impl BitXor for BitBoard {
+    type Output = Self;
+
+    fn bitxor(self, rhs: Self) -> Self::Output {
+        BitBoard::new(self.0 ^ rhs.0)
+    }
+}
+
+impl Not for BitBoard {
+    type Output = Self;
+
+    fn not(self) -> Self::Output {
+        BitBoard::new(!self.0)
+    }
+}
+
+pub struct BitBoardIter {
+    bits: u64,
+}
+
+impl Iterator for BitBoardIter {
+    type Item = u8;
+
+    #[inline(always)]
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.bits == 0 {
+            return None;
+        }
+
+        let index = self.bits.trailing_zeros() as u8;
+        self.bits &= self.bits - 1;
+        Some(index)
     }
 }
 

@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 giga-chess = { path = ".." }
+rand = "0.9.1"
