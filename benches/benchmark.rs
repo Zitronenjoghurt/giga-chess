@@ -1,5 +1,5 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use giga_chess::engine::bit_board::BitBoard;
+use giga_chess::game::bit_board::BitBoard;
 use std::hint::black_box;
 
 // This benchmark does not provide any meaningful results (performance on bit-level fluctuates a lot).

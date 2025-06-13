@@ -1,5 +1,5 @@
-use giga_chess::engine::bit_board::BitBoard;
 use giga_chess::engine::Engine;
+use giga_chess::game::bit_board::BitBoard;
 
 fn main() {
     //let board = ChessBoard::default();

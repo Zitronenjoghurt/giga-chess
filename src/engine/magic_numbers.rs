@@ -2,7 +2,7 @@ use crate::engine::attack_table::{
     build_bishop_blocks, build_occupancy_variations, build_rook_blocks, calculate_bishop_attack,
     calculate_rook_attack,
 };
-use crate::engine::bit_board::BitBoard;
+use crate::game::bit_board::BitBoard;
 use rand::Rng;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 

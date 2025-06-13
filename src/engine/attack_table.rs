@@ -1,7 +1,7 @@
-use crate::engine::bit_board::BitBoard;
 use crate::engine::magic_numbers::magic_hash;
-use crate::engine::square::Square;
+use crate::game::bit_board::BitBoard;
 use crate::game::color::Color;
+use crate::game::square::Square;
 
 const BISHOP_MAGICS: [u64; 64] = [
     0x0106004105020080,
@@ -571,7 +571,7 @@ pub fn build_rook_attacks() -> Vec<Vec<BitBoard>> {
 #[cfg(test)]
 mod tests {
     use super::AttackTable;
-    use crate::engine::bit_board::BitBoard;
+    use crate::game::bit_board::BitBoard;
     use crate::game::color::Color;
 
     #[test]

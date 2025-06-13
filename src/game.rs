@@ -2,10 +2,13 @@ use castling_rights::CastlingRights;
 use chess_board::ChessBoard;
 use color::Color;
 
+pub mod bit_board;
 pub mod castling_rights;
 pub mod chess_board;
+pub mod chess_move;
 pub mod color;
 pub mod piece;
+pub mod square;
 
 #[derive(Debug, Clone)]
 pub struct Game {

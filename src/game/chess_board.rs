@@ -1,7 +1,8 @@
-use crate::engine::bit_board::BitBoard;
-use crate::engine::square::Square;
+use crate::game::bit_board::BitBoard;
+use crate::game::chess_move::{ChessMove, ChessMoveType};
 use crate::game::color::{Color, COLORS};
 use crate::game::piece::{Piece, PIECES};
+use crate::game::square::*;
 use std::fmt::{Display, Formatter};
 
 const DEFAULT_BOARD: ChessBoard = ChessBoard([
@@ -34,7 +35,7 @@ const DEFAULT_BOARD: ChessBoard = ChessBoard([
 /// 9: Black Rooks
 /// 10: Black Queens
 /// 11: Black Kings
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct ChessBoard([BitBoard; 12]);
 
@@ -100,13 +101,139 @@ impl ChessBoard {
     #[inline(always)]
     pub fn get_piece_at(&self, square: u8) -> Option<(Piece, Color)> {
         for color in COLORS {
-            for piece in PIECES {
-                if self.get_piece_bb(piece, color).get_bit(square) {
-                    return Some((piece, color));
-                }
+            if let Some(piece) = self.get_piece_at_with_color(square, color) {
+                return Some((piece, color));
             }
         }
         None
+    }
+
+    #[inline(always)]
+    pub fn get_piece_at_with_color(&self, square: u8, color: Color) -> Option<Piece> {
+        for piece in PIECES {
+            if self.get_piece_bb(piece, color).get_bit(square) {
+                return Some(piece);
+            }
+        }
+        None
+    }
+
+    fn move_color(&mut self, from: u8, to: u8, color: Color) {
+        let Some(piece) = self.get_piece_at_with_color(from, color) else {
+            return;
+        };
+        self.move_piece(piece, color, from, to);
+    }
+
+    fn double_pawn_push(&mut self, from: u8, color: Color) {
+        let to = match color {
+            Color::White => from + 16,
+            Color::Black => from - 16,
+        };
+        self.move_piece(Piece::Pawn, color, from, to);
+    }
+
+    fn capture(&mut self, target_square: u8, target_color: Color) {
+        let Some(captured_piece) = self.get_piece_at_with_color(target_square, target_color) else {
+            return;
+        };
+        self.clear_piece(captured_piece, target_color, target_square);
+    }
+
+    fn move_color_capture(&mut self, from: u8, to: u8, color: Color) {
+        self.move_color(from, to, color);
+        self.capture(to, color.opposite());
+    }
+
+    fn castle_queenside(&mut self, color: Color) {
+        match color {
+            Color::White => {
+                self.move_piece(Piece::King, color, 4, 2);
+                self.move_piece(Piece::Rook, color, 0, 3);
+            }
+            Color::Black => {
+                self.move_piece(Piece::King, color, 60, 58);
+                self.move_piece(Piece::Rook, color, 56, 59);
+            }
+        }
+    }
+
+    fn castle_kingside(&mut self, color: Color) {
+        match color {
+            Color::White => {
+                self.move_piece(Piece::King, color, 4, 6);
+                self.move_piece(Piece::Rook, color, 7, 5);
+            }
+            Color::Black => {
+                self.move_piece(Piece::King, color, 60, 62);
+                self.move_piece(Piece::Rook, color, 63, 61);
+            }
+        }
+    }
+
+    /// The en passant target square is the square behind the pawn that moved two squares.
+    fn en_passant_capture(&mut self, from: u8, en_passant_target_square: u8, color: Color) {
+        self.move_piece(Piece::Pawn, color, from, en_passant_target_square);
+        let captured_pawn_square = match color {
+            Color::White => en_passant_target_square - 8,
+            Color::Black => en_passant_target_square + 8,
+        };
+        self.clear_piece(Piece::Pawn, color.opposite(), captured_pawn_square);
+    }
+
+    fn move_promote(&mut self, from: u8, to: u8, color: Color, promotion_piece: Piece) {
+        let Some(source_piece) = self.get_piece_at_with_color(from, color) else {
+            return;
+        };
+        self.clear_piece(source_piece, color, from);
+        self.set_piece(promotion_piece, color, to);
+    }
+
+    fn move_promote_capture(&mut self, from: u8, to: u8, color: Color, promotion_piece: Piece) {
+        self.move_promote(from, to, color, promotion_piece);
+        self.capture(to, color.opposite());
+    }
+
+    /// The chess board is dumb; it assumes that the moves it receives are valid.
+    pub fn play_move(&self, chess_move: ChessMove, color: Color, en_passant: Option<u8>) -> Self {
+        let mut new_board = *self;
+        let from = chess_move.get_from();
+        let to = chess_move.get_to();
+        let move_type = chess_move.get_type();
+
+        match move_type {
+            ChessMoveType::Quiet => {
+                new_board.move_color(from, to, color);
+            }
+            ChessMoveType::DoublePawnPush => {
+                new_board.double_pawn_push(from, color);
+            }
+            ChessMoveType::QueenCastle => {
+                new_board.castle_queenside(color);
+            }
+            ChessMoveType::KingCastle => {
+                new_board.castle_kingside(color);
+            }
+            ChessMoveType::Capture => {
+                new_board.move_color_capture(from, to, color);
+            }
+            ChessMoveType::EnPassant => {
+                if let Some(en_passant) = en_passant {
+                    new_board.en_passant_capture(from, en_passant, color);
+                }
+            }
+            _ => {
+                if let Some(promotion_piece) = move_type.promotion_piece() {
+                    if move_type.is_capture() {
+                        new_board.move_promote_capture(from, to, color, promotion_piece);
+                    } else {
+                        new_board.move_promote(from, to, color, promotion_piece);
+                    }
+                }
+            }
+        }
+
+        new_board
     }
 }
 
@@ -135,10 +262,12 @@ impl Display for ChessBoard {
 
 #[cfg(test)]
 mod tests {
-    use crate::engine::bit_board::BitBoard;
+    use crate::game::bit_board::BitBoard;
     use crate::game::chess_board::ChessBoard;
+    use crate::game::chess_move::{ChessMove, ChessMoveType};
     use crate::game::color::Color;
     use crate::game::piece::Piece;
+    use crate::game::square::{A8, B7, B8, C2, C4, C5, C8, D5, D6, D7, D8, E8};
 
     const BOARDS: [BitBoard; 12] = [
         BitBoard::new(0b000000_000001),
@@ -291,5 +420,88 @@ mod tests {
         );
         assert_eq!(board.get_piece_at(11).unwrap(), (Piece::King, Color::Black));
         assert_eq!(board.get_piece_at(12), None);
+    }
+
+    #[test]
+    fn test_play_move() {
+        let board = ChessBoard::default();
+
+        let m = ChessMove::new(C2, 0, ChessMoveType::DoublePawnPush);
+        let board = board.play_move(m, Color::White, None);
+        assert_eq!(board.get_piece_at(C2), None);
+        assert_eq!(board.get_piece_at(C4).unwrap(), (Piece::Pawn, Color::White));
+
+        let m = ChessMove::new(C4, C5, ChessMoveType::Quiet);
+        let board = board.play_move(m, Color::White, None);
+        assert_eq!(board.get_piece_at(C4), None);
+        assert_eq!(board.get_piece_at(C5).unwrap(), (Piece::Pawn, Color::White));
+
+        let m = ChessMove::new(D7, 0, ChessMoveType::DoublePawnPush);
+        let board = board.play_move(m, Color::Black, None);
+        assert_eq!(board.get_piece_at(D7), None);
+        assert_eq!(board.get_piece_at(D5).unwrap(), (Piece::Pawn, Color::Black));
+
+        let m = ChessMove::new(C5, 0, ChessMoveType::EnPassant);
+        let board = board.play_move(m, Color::White, Some(D6));
+        assert_eq!(board.get_piece_at(C5), None);
+        assert_eq!(board.get_piece_at(D5), None);
+        assert_eq!(board.get_piece_at(D6).unwrap(), (Piece::Pawn, Color::White));
+
+        let m = ChessMove::new(D6, D7, ChessMoveType::Quiet);
+        let board = board.play_move(m, Color::White, None);
+        assert_eq!(board.get_piece_at(D6), None);
+        assert_eq!(board.get_piece_at(D7).unwrap(), (Piece::Pawn, Color::White));
+
+        let m = ChessMove::new(D7, C8, ChessMoveType::QueenPromotionCapture);
+        assert_eq!(
+            board.get_piece_at(C8).unwrap(),
+            (Piece::Bishop, Color::Black)
+        );
+        let board = board.play_move(m, Color::White, None);
+        assert_eq!(board.get_piece_at(D7), None);
+        assert_eq!(
+            board.get_piece_at(C8).unwrap(),
+            (Piece::Queen, Color::White)
+        );
+
+        let m = ChessMove::new(C8, D8, ChessMoveType::Capture);
+        assert_eq!(
+            board.get_piece_at(D8).unwrap(),
+            (Piece::Queen, Color::Black)
+        );
+        let board = board.play_move(m, Color::White, None);
+        assert_eq!(board.get_piece_at(C8), None);
+        assert_eq!(
+            board.get_piece_at(D8).unwrap(),
+            (Piece::Queen, Color::White)
+        );
+
+        let m = ChessMove::new(D8, B8, ChessMoveType::Capture);
+        assert_eq!(
+            board.get_piece_at(B8).unwrap(),
+            (Piece::Knight, Color::Black)
+        );
+        let board = board.play_move(m, Color::White, None);
+        assert_eq!(board.get_piece_at(D8), None);
+        assert_eq!(
+            board.get_piece_at(B8).unwrap(),
+            (Piece::Queen, Color::White)
+        );
+
+        let m = ChessMove::new(B8, B7, ChessMoveType::Capture);
+        assert_eq!(board.get_piece_at(B7).unwrap(), (Piece::Pawn, Color::Black));
+        let board = board.play_move(m, Color::White, None);
+        assert_eq!(board.get_piece_at(B8), None);
+        assert_eq!(
+            board.get_piece_at(B7).unwrap(),
+            (Piece::Queen, Color::White)
+        );
+
+        let m = ChessMove::new(0, 0, ChessMoveType::QueenCastle);
+        let board = board.play_move(m, Color::Black, None);
+        assert_eq!(board.get_piece_at(A8), None);
+        assert_eq!(board.get_piece_at(E8), None);
+        assert_eq!(board.get_piece_at(C8).unwrap(), (Piece::King, Color::Black));
+        assert_eq!(board.get_piece_at(D8).unwrap(), (Piece::Rook, Color::Black));
     }
 }
