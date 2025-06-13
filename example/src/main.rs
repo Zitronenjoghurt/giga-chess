@@ -1,11 +1,17 @@
-use giga_chess::game::chess_board::ChessBoard;
-use giga_chess::game::color::Color;
-use giga_chess::game::piece::Piece;
+use giga_chess::engine::bit_board::BitBoard;
+use giga_chess::engine::Engine;
 
 fn main() {
-    let board = ChessBoard::default();
-    println!("{}", board);
+    //let board = ChessBoard::default();
+    //println!("{}", board);
 
-    let white_rooks = board.get_piece_bb(Piece::Rook, Color::White);
-    println!("{}", white_rooks);
+    //let white_rooks = board.get_piece_bb(Piece::Rook, Color::White);
+    //println!("{}", white_rooks);
+
+    let engine = Engine::initialize();
+    let mut occupancy = BitBoard::empty();
+    occupancy.set_bit(27);
+    occupancy.set_bit(45);
+    let bishop_attack = engine.attack_table.get_bishop_attacks(27, occupancy);
+    println!("{}", bishop_attack);
 }

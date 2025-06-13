@@ -1,7 +1,8 @@
+use crate::utils::bit_operations::u16_get_bit;
 use std::fmt::{Display, Formatter};
-use std::ops::BitOr;
+use std::ops::{BitAnd, BitOr};
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 #[repr(transparent)]
 /// A u64 where every bit represents one cell of the chess board
 pub struct BitBoard(u64);
@@ -23,6 +24,11 @@ impl BitBoard {
     }
 
     #[inline(always)]
+    pub fn is_empty(&self) -> bool {
+        self.0 == 0
+    }
+
+    #[inline(always)]
     /// Returns true if the bit at the given index is 1
     pub fn get_bit(&self, index: u8) -> bool {
         (self.0 & (1u64 << index)) != 0u64
@@ -39,6 +45,36 @@ impl BitBoard {
     pub fn clear_bit(&mut self, index: u8) {
         self.0 &= !(1u64 << index);
     }
+
+    #[inline(always)]
+    pub fn count_ones(&self) -> u8 {
+        self.0.count_ones() as u8
+    }
+
+    #[inline(always)]
+    pub fn pop_lowest_set_bit(&mut self) -> Option<u8> {
+        if self.0 == 0 {
+            return None;
+        }
+
+        let lsb_index = self.0.trailing_zeros() as u8;
+        self.0 &= self.0 - 1;
+        Some(lsb_index)
+    }
+
+    pub fn occupancy_variation(mut mask: BitBoard, index: u16) -> BitBoard {
+        let mut result = BitBoard::empty();
+        for variation_index in 0u8..16 {
+            if let Some(lowest_set_bit_index) = mask.pop_lowest_set_bit() {
+                if u16_get_bit(index, variation_index) {
+                    result.set_bit(lowest_set_bit_index);
+                }
+            } else {
+                break;
+            }
+        }
+        result
+    }
 }
 
 impl BitOr for BitBoard {
@@ -46,6 +82,14 @@ impl BitOr for BitBoard {
 
     fn bitor(self, rhs: Self) -> Self::Output {
         BitBoard::new(self.0 | rhs.0)
+    }
+}
+
+impl BitAnd for BitBoard {
+    type Output = Self;
+
+    fn bitand(self, rhs: Self) -> Self::Output {
+        BitBoard::new(self.0 & rhs.0)
     }
 }
 
