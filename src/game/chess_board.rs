@@ -173,11 +173,11 @@ impl ChessBoard {
     }
 
     /// The en passant target square is the square behind the pawn that moved two squares.
-    fn en_passant_capture(&mut self, from: u8, en_passant_target_square: u8, color: Color) {
-        self.move_piece(Piece::Pawn, color, from, en_passant_target_square);
+    fn en_passant_capture(&mut self, from: u8, to: u8, color: Color) {
+        self.move_piece(Piece::Pawn, color, from, to);
         let captured_pawn_square = match color {
-            Color::White => en_passant_target_square - 8,
-            Color::Black => en_passant_target_square + 8,
+            Color::White => to - 8,
+            Color::Black => to + 8,
         };
         self.clear_piece(Piece::Pawn, color.opposite(), captured_pawn_square);
     }
@@ -196,7 +196,7 @@ impl ChessBoard {
     }
 
     /// The chess board is dumb; it assumes that the moves it receives are valid.
-    pub fn play_move(&self, chess_move: ChessMove, color: Color, en_passant: Option<u8>) -> Self {
+    pub fn play_move(&self, chess_move: ChessMove, color: Color) -> Self {
         let mut new_board = *self;
         let from = chess_move.get_from();
         let to = chess_move.get_to();
@@ -219,9 +219,7 @@ impl ChessBoard {
                 new_board.move_color_capture(from, to, color);
             }
             ChessMoveType::EnPassant => {
-                if let Some(en_passant) = en_passant {
-                    new_board.en_passant_capture(from, en_passant, color);
-                }
+                new_board.en_passant_capture(from, to, color);
             }
             _ => {
                 if let Some(promotion_piece) = move_type.promotion_piece() {
@@ -244,7 +242,7 @@ impl ChessBoard {
             let mut empty_count = 0;
             let mut rank_string = String::new();
 
-            for file in (1..=8) {
+            for file in 1..=8 {
                 let square = Square::from_file_rank(file, rank);
                 if let Some((piece, color)) = self.get_piece_at(square.get_value()) {
                     if empty_count > 0 {
@@ -500,28 +498,28 @@ mod tests {
         let board = ChessBoard::default();
 
         let m = ChessMove::new(C2, 0, ChessMoveType::DoublePawnPush);
-        let board = board.play_move(m, Color::White, None);
+        let board = board.play_move(m, Color::White);
         assert_eq!(board.get_piece_at(C2), None);
         assert_eq!(board.get_piece_at(C4).unwrap(), (Piece::Pawn, Color::White));
 
         let m = ChessMove::new(C4, C5, ChessMoveType::Quiet);
-        let board = board.play_move(m, Color::White, None);
+        let board = board.play_move(m, Color::White);
         assert_eq!(board.get_piece_at(C4), None);
         assert_eq!(board.get_piece_at(C5).unwrap(), (Piece::Pawn, Color::White));
 
         let m = ChessMove::new(D7, 0, ChessMoveType::DoublePawnPush);
-        let board = board.play_move(m, Color::Black, None);
+        let board = board.play_move(m, Color::Black);
         assert_eq!(board.get_piece_at(D7), None);
         assert_eq!(board.get_piece_at(D5).unwrap(), (Piece::Pawn, Color::Black));
 
-        let m = ChessMove::new(C5, 0, ChessMoveType::EnPassant);
-        let board = board.play_move(m, Color::White, Some(D6));
+        let m = ChessMove::new(C5, D6, ChessMoveType::EnPassant);
+        let board = board.play_move(m, Color::White);
         assert_eq!(board.get_piece_at(C5), None);
         assert_eq!(board.get_piece_at(D5), None);
         assert_eq!(board.get_piece_at(D6).unwrap(), (Piece::Pawn, Color::White));
 
         let m = ChessMove::new(D6, D7, ChessMoveType::Quiet);
-        let board = board.play_move(m, Color::White, None);
+        let board = board.play_move(m, Color::White);
         assert_eq!(board.get_piece_at(D6), None);
         assert_eq!(board.get_piece_at(D7).unwrap(), (Piece::Pawn, Color::White));
 
@@ -530,7 +528,7 @@ mod tests {
             board.get_piece_at(C8).unwrap(),
             (Piece::Bishop, Color::Black)
         );
-        let board = board.play_move(m, Color::White, None);
+        let board = board.play_move(m, Color::White);
         assert_eq!(board.get_piece_at(D7), None);
         assert_eq!(
             board.get_piece_at(C8).unwrap(),
@@ -542,7 +540,7 @@ mod tests {
             board.get_piece_at(D8).unwrap(),
             (Piece::Queen, Color::Black)
         );
-        let board = board.play_move(m, Color::White, None);
+        let board = board.play_move(m, Color::White);
         assert_eq!(board.get_piece_at(C8), None);
         assert_eq!(
             board.get_piece_at(D8).unwrap(),
@@ -554,7 +552,7 @@ mod tests {
             board.get_piece_at(B8).unwrap(),
             (Piece::Knight, Color::Black)
         );
-        let board = board.play_move(m, Color::White, None);
+        let board = board.play_move(m, Color::White);
         assert_eq!(board.get_piece_at(D8), None);
         assert_eq!(
             board.get_piece_at(B8).unwrap(),
@@ -563,7 +561,7 @@ mod tests {
 
         let m = ChessMove::new(B8, B7, ChessMoveType::Capture);
         assert_eq!(board.get_piece_at(B7).unwrap(), (Piece::Pawn, Color::Black));
-        let board = board.play_move(m, Color::White, None);
+        let board = board.play_move(m, Color::White);
         assert_eq!(board.get_piece_at(B8), None);
         assert_eq!(
             board.get_piece_at(B7).unwrap(),
@@ -571,7 +569,7 @@ mod tests {
         );
 
         let m = ChessMove::new(0, 0, ChessMoveType::QueenCastle);
-        let board = board.play_move(m, Color::Black, None);
+        let board = board.play_move(m, Color::Black);
         assert_eq!(board.get_piece_at(A8), None);
         assert_eq!(board.get_piece_at(E8), None);
         assert_eq!(board.get_piece_at(C8).unwrap(), (Piece::King, Color::Black));

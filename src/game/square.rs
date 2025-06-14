@@ -227,6 +227,20 @@ impl Square {
             Square::new(idx).index_down_right()
         })
     }
+
+    pub fn get_file_char(&self) -> char {
+        match self.get_file() {
+            1 => 'A',
+            2 => 'B',
+            3 => 'C',
+            4 => 'D',
+            5 => 'E',
+            6 => 'F',
+            7 => 'G',
+            8 => 'H',
+            _ => unreachable!(),
+        }
+    }
 }
 
 impl Display for Square {

@@ -1,6 +1,6 @@
 use crate::utils::bit_operations::u16_get_bit;
 use std::fmt::{Display, Formatter};
-use std::ops::{BitAnd, BitOr, BitXor, Neg, Not};
+use std::ops::{BitAnd, BitOr, BitXor, Not};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 #[repr(transparent)]

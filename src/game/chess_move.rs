@@ -66,7 +66,7 @@ pub enum ChessMoveType {
 
 impl ChessMoveType {
     pub fn is_capture(&self) -> bool {
-        (((*self as u8) >> 3) & 1) == 1
+        (((*self as u8) >> 2) & 1) == 1
     }
 
     pub fn is_promotion(&self) -> bool {

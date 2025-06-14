@@ -22,18 +22,20 @@ pub struct GameState {
     // ToDo: Threefold repetition
 }
 
-impl GameState {
-    pub fn new(start_color: Color) -> Self {
+impl Default for GameState {
+    fn default() -> Self {
         Self {
             board: ChessBoard::default(),
-            side_to_move: start_color,
+            side_to_move: Color::White,
             castling_rights: CastlingRights::default(),
             en_passant_square: None,
             half_moves: 0,
             full_moves: 1,
         }
     }
+}
 
+impl GameState {
     pub fn play_move(&mut self, chess_move: ChessMove) {
         let move_from = chess_move.get_from();
         let move_to = chess_move.get_to();
@@ -45,9 +47,7 @@ impl GameState {
             return;
         };
 
-        self.board = self
-            .board
-            .play_move(chess_move, self.side_to_move, self.en_passant_square);
+        self.board = self.board.play_move(chess_move, self.side_to_move);
 
         if moved_piece == piece::Piece::Pawn || move_type.is_capture() {
             self.half_moves = 0;

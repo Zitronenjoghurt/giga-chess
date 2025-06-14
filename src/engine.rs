@@ -53,11 +53,9 @@ impl Engine {
     }
 
     pub fn is_legal_move(&self, game_state: &GameState, chess_move: ChessMove) -> bool {
-        let future_board = game_state.board.play_move(
-            chess_move,
-            game_state.side_to_move,
-            game_state.en_passant_square,
-        );
+        let future_board = game_state
+            .board
+            .play_move(chess_move, game_state.side_to_move);
         if !self.is_in_check(future_board, game_state.side_to_move) {
             true
         } else {

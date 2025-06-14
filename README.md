@@ -9,14 +9,13 @@ A rust chess library built for performance, handling game logic and legal/best m
 
 ```rust
 use giga_chess::engine::Engine;
-use giga_chess::game::color::Color;
 use giga_chess::game::Game;
+use giga_chess::game::pgn_metadata::PGNMetadata;
 
 fn main() {
     let engine = Engine::initialize();
 
-    let starting_color = Color::White;
-    let mut game = Game::new(&engine, starting_color);
+    let mut game = Game::new(&engine, PGNMetadata::now());
     let moves = game.legal_moves();
 
     // Choose some kind of move
