@@ -3,7 +3,7 @@ use crate::game::square::Square;
 use std::fmt::{Display, Formatter};
 
 // https://www.chessprogramming.org/Encoding_Moves
-#[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 pub struct ChessMove(u16);
 

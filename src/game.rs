@@ -1,8 +1,11 @@
-use crate::game::chess_move::{ChessMove, ChessMoveType};
-use crate::game::square::*;
-use castling_rights::CastlingRights;
-use chess_board::ChessBoard;
-use color::Color;
+use crate::engine::Engine;
+use crate::game::chess_board::ChessBoard;
+use crate::game::chess_move::ChessMove;
+use crate::game::color::Color;
+use crate::game::state::GameState;
+use crate::game::status::GameStatus;
+use std::collections::HashSet;
+use std::sync::Arc;
 
 pub mod bit_board;
 pub mod castling_rights;
@@ -11,90 +14,64 @@ pub mod chess_move;
 pub mod color;
 pub mod piece;
 pub mod square;
+pub mod state;
+pub mod status;
 
-#[derive(Debug, Clone)]
 pub struct Game {
-    pub board: ChessBoard,
-    pub side_to_move: Color,
-    pub castling_rights: CastlingRights,
-    /// En passant target square
-    /// The square behind a pawn that just made a double move
-    pub en_passant_square: Option<u8>,
-    /// Half-move clock for 50-move rule
-    /// Counts half-moves since last pawn move or capture
-    pub half_moves: u8,
-    /// Full-move counter, incremented after black's move
-    pub full_moves: u16,
-    // ToDo: Threefold repetition
+    state: GameState,
+    status: GameStatus,
+    legal_moves: HashSet<ChessMove>,
+    move_history: Vec<ChessMove>,
 }
 
 impl Game {
-    pub fn new(start_color: Color) -> Self {
+    pub fn new(engine: &Arc<Engine>, starting_color: Color) -> Self {
+        let state = GameState::new(starting_color);
+        let (legal_moves, status) = engine.generate_moves(&state);
         Self {
-            board: ChessBoard::default(),
-            side_to_move: start_color,
-            castling_rights: CastlingRights::default(),
-            en_passant_square: None,
-            half_moves: 0,
-            full_moves: 0,
+            state,
+            status,
+            legal_moves: legal_moves.iter().copied().collect(),
+            move_history: Vec::new(),
         }
     }
 
-    pub fn play_move(&mut self, chess_move: ChessMove) {
-        let move_from = chess_move.get_from();
-        let move_to = chess_move.get_to();
-        let move_type = chess_move.get_type();
-        let Some(moved_piece) = self
-            .board
-            .get_piece_at_with_color(move_from, self.side_to_move)
-        else {
-            return;
-        };
+    pub fn play_move(&mut self, engine: &Arc<Engine>, chess_move: ChessMove) -> bool {
+        if !self.legal_moves.contains(&chess_move) {
+            return false;
+        }
 
-        self.board = self
-            .board
-            .play_move(chess_move, self.side_to_move, self.en_passant_square);
+        self.state.play_move(chess_move);
 
-        if moved_piece == piece::Piece::Pawn || move_type.is_capture() {
-            self.half_moves = 0;
+        let (legal_moves, status) = engine.generate_moves(&self.state);
+        self.legal_moves = legal_moves.iter().copied().collect();
+        self.status = status;
+        self.move_history.push(chess_move);
+
+        true
+    }
+
+    pub fn status(&self) -> GameStatus {
+        self.status
+    }
+
+    pub fn winner(&self) -> Option<Color> {
+        if self.status == GameStatus::Checkmate {
+            Some(self.state.side_to_move.opposite())
         } else {
-            self.half_moves += 1;
+            None
         }
+    }
 
-        if self.side_to_move == Color::Black {
-            self.full_moves += 1;
-        }
+    pub fn side_to_move(&self) -> Color {
+        self.state.side_to_move
+    }
 
-        if move_type == ChessMoveType::DoublePawnPush {
-            self.en_passant_square = match self.side_to_move {
-                Color::White => Some(move_from - 8),
-                Color::Black => Some(move_from + 8),
-            }
-        } else {
-            self.en_passant_square = None;
-        }
+    pub fn legal_moves(&self) -> &HashSet<ChessMove> {
+        &self.legal_moves
+    }
 
-        if self.castling_rights.white_king_side
-            && (move_from == E1 || move_from == H1 || move_to == H1)
-        {
-            self.castling_rights.white_king_side = false;
-        }
-        if self.castling_rights.white_queen_side
-            && (move_from == E1 || move_from == A1 || move_to == A1)
-        {
-            self.castling_rights.white_queen_side = false;
-        }
-        if self.castling_rights.black_king_side
-            && (move_from == E8 || move_from == H8 || move_to == H8)
-        {
-            self.castling_rights.black_king_side = false;
-        }
-        if self.castling_rights.black_queen_side
-            && (move_from == E8 || move_from == A8 || move_to == A8)
-        {
-            self.castling_rights.black_queen_side = false;
-        }
-
-        self.side_to_move = self.side_to_move.opposite();
+    pub fn board(&self) -> ChessBoard {
+        self.state.board
     }
 }
