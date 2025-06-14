@@ -5,7 +5,7 @@ mod simulations;
 
 fn main() {
     let engine = Engine::initialize();
-    for status in run_stupid_game(&engine, 2000) {
+    for status in run_stupid_game(&engine, 0) {
         println!("{}", status);
     }
 }

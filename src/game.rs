@@ -5,6 +5,7 @@ use crate::game::color::Color;
 use crate::game::state::GameState;
 use crate::game::status::GameStatus;
 use std::collections::HashSet;
+use std::error::Error;
 use std::sync::Arc;
 
 pub mod bit_board;
@@ -22,6 +23,7 @@ pub struct Game {
     status: GameStatus,
     legal_moves: HashSet<ChessMove>,
     move_history: Vec<ChessMove>,
+    origin_fen: bool,
 }
 
 impl Game {
@@ -33,6 +35,7 @@ impl Game {
             status,
             legal_moves: legal_moves.iter().copied().collect(),
             move_history: Vec::new(),
+            origin_fen: false,
         }
     }
 
@@ -46,7 +49,10 @@ impl Game {
         let (legal_moves, status) = engine.generate_moves(&self.state);
         self.legal_moves = legal_moves.iter().copied().collect();
         self.status = status;
-        self.move_history.push(chess_move);
+
+        if self.origin_fen == false {
+            self.move_history.push(chess_move);
+        }
 
         true
     }
@@ -67,11 +73,35 @@ impl Game {
         self.state.side_to_move
     }
 
+    pub fn half_moves(&self) -> u8 {
+        self.state.half_moves
+    }
+
+    pub fn full_moves(&self) -> u16 {
+        self.state.full_moves
+    }
+
     pub fn legal_moves(&self) -> &HashSet<ChessMove> {
         &self.legal_moves
     }
 
     pub fn board(&self) -> ChessBoard {
         self.state.board
+    }
+
+    pub fn get_fen_string(&self) -> String {
+        self.state.get_fen_string()
+    }
+
+    pub fn from_fen_string(engine: &Arc<Engine>, fen_string: &str) -> Result<Self, Box<dyn Error>> {
+        let state = GameState::from_fen_string(fen_string)?;
+        let (legal_moves, status) = engine.generate_moves(&state);
+        Ok(Self {
+            state,
+            status,
+            legal_moves: legal_moves.iter().copied().collect(),
+            move_history: Vec::new(),
+            origin_fen: true,
+        })
     }
 }

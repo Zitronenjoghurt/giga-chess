@@ -3,9 +3,10 @@ use crate::game::chess_board::ChessBoard;
 use crate::game::chess_move::{ChessMove, ChessMoveType};
 use crate::game::color::Color;
 use crate::game::piece;
-use crate::game::square::{A1, A8, E1, E8, H1, H8};
+use crate::game::square::*;
+use std::error::Error;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct GameState {
     pub board: ChessBoard,
     pub side_to_move: Color,
@@ -29,7 +30,7 @@ impl GameState {
             castling_rights: CastlingRights::default(),
             en_passant_square: None,
             half_moves: 0,
-            full_moves: 0,
+            full_moves: 1,
         }
     }
 
@@ -89,5 +90,107 @@ impl GameState {
         }
 
         self.side_to_move = self.side_to_move.opposite();
+    }
+
+    pub fn get_fen_string(&self) -> String {
+        let mut fen_string = self.board.get_fen_string();
+        fen_string.push(' ');
+        fen_string.push(self.side_to_move.get_fen_char());
+
+        fen_string.push(' ');
+        fen_string.push_str(&self.castling_rights.get_fen_string());
+
+        fen_string.push(' ');
+        if let Some(en_passant_square) = self.en_passant_square {
+            let square = Square::new(en_passant_square);
+            fen_string.push_str(&square.to_string().to_lowercase());
+        } else {
+            fen_string.push('-');
+        }
+
+        fen_string.push(' ');
+        fen_string.push_str(&self.half_moves.to_string());
+
+        fen_string.push(' ');
+        fen_string.push_str(&self.full_moves.to_string());
+
+        fen_string
+    }
+
+    pub fn from_fen_string(fen_string: &str) -> Result<Self, Box<dyn Error>> {
+        let parts: Vec<&str> = fen_string.split(' ').collect();
+        if parts.len() != 6 {
+            return Err("Must have 6 whitespace-separated parts".into());
+        }
+
+        let board = ChessBoard::from_fen_string(parts[0])
+            .map_err(|err| format!("Invalid board representation: {}", err))?;
+
+        let side_to_move =
+            Color::try_from(parts[1]).map_err(|err| format!("Invalid side to move: {}", err))?;
+
+        let castling_rights = CastlingRights::try_from(parts[2])
+            .map_err(|err| format!("Invalid castling rights: {}", err))?;
+
+        let en_passant_square = Some(parts[3])
+            .filter(|&square_str| square_str != "-")
+            .map(Square::try_from)
+            .transpose()
+            .map_err(|err| format!("Invalid en passant square: {}", err))?
+            .map(|square| square.get_value());
+
+        let half_moves = parts[4]
+            .parse::<u8>()
+            .map_err(|err| format!("Invalid half-move count: {}", err))?;
+
+        let full_moves = parts[5]
+            .parse::<u16>()
+            .map_err(|err| format!("Invalid full-move count: {}", err))?;
+
+        Ok(Self {
+            board,
+            side_to_move,
+            castling_rights,
+            en_passant_square,
+            half_moves,
+            full_moves,
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::game::castling_rights::CastlingRights;
+    use crate::game::chess_board::ChessBoard;
+    use crate::game::color::Color;
+    use crate::game::piece::Piece;
+    use crate::game::square::*;
+    use crate::game::state::GameState;
+
+    #[test]
+    fn test_fen() {
+        let mut board = ChessBoard::empty();
+        board.set_piece(Piece::King, Color::Black, E8);
+        board.set_piece(Piece::King, Color::White, G8);
+        board.set_piece(Piece::Pawn, Color::White, H7);
+        board.set_piece(Piece::Pawn, Color::Black, B5);
+        board.set_piece(Piece::Queen, Color::Black, D5);
+        board.set_piece(Piece::Pawn, Color::Black, B4);
+        board.set_piece(Piece::Bishop, Color::Black, B2);
+
+        let game = GameState {
+            board,
+            side_to_move: Color::White,
+            castling_rights: CastlingRights::none(),
+            en_passant_square: None,
+            half_moves: 1,
+            full_moves: 123,
+        };
+
+        let fen_string = game.get_fen_string();
+        assert_eq!(fen_string, "4k1K1/7P/8/1p1q4/1p6/8/1b6/8 w - - 1 123");
+
+        let loaded_game = GameState::from_fen_string(&fen_string).unwrap();
+        assert_eq!(loaded_game, game);
     }
 }

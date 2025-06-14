@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::fmt::Display;
 
 pub const A1: u8 = 0;
@@ -300,5 +301,44 @@ impl Display for Square {
             _ => unreachable!(),
         };
         write!(f, "{}", str)
+    }
+}
+
+impl TryFrom<&str> for Square {
+    type Error = Box<dyn Error>;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        if value.len() != 2 {
+            return Err(format!("Invalid square '{value}'").into());
+        }
+
+        let file_char = value.chars().nth(0).unwrap();
+        let rank_char = value.chars().nth(1).unwrap();
+
+        let file: u8 = match file_char {
+            'A' => 1,
+            'B' => 2,
+            'C' => 3,
+            'D' => 4,
+            'E' => 5,
+            'F' => 6,
+            'G' => 7,
+            'H' => 8,
+            _ => return Err(format!("Invalid file '{file_char}'").into()),
+        };
+
+        let rank: u8 = match rank_char {
+            '1' => 1,
+            '2' => 2,
+            '3' => 3,
+            '4' => 4,
+            '5' => 5,
+            '6' => 6,
+            '7' => 7,
+            '8' => 8,
+            _ => return Err(format!("Invalid rank '{rank_char}'").into()),
+        };
+
+        Ok(Square::from_file_rank(file, rank))
     }
 }

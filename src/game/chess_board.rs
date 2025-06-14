@@ -3,6 +3,7 @@ use crate::game::chess_move::{ChessMove, ChessMoveType};
 use crate::game::color::{Color, COLORS};
 use crate::game::piece::{Piece, PIECES};
 use crate::game::square::*;
+use std::error::Error;
 use std::fmt::{Display, Formatter};
 
 const DEFAULT_BOARD: ChessBoard = ChessBoard([
@@ -234,6 +235,78 @@ impl ChessBoard {
         }
 
         new_board
+    }
+
+    pub fn get_fen_string(&self) -> String {
+        let mut fen = String::new();
+
+        for rank in (1..=8).rev() {
+            let mut empty_count = 0;
+            let mut rank_string = String::new();
+
+            for file in (1..=8) {
+                let square = Square::from_file_rank(file, rank);
+                if let Some((piece, color)) = self.get_piece_at(square.get_value()) {
+                    if empty_count > 0 {
+                        rank_string.push_str(&empty_count.to_string());
+                        empty_count = 0;
+                    }
+                    rank_string.push(piece.get_fen_char(color));
+                } else {
+                    empty_count += 1;
+                }
+            }
+
+            if empty_count > 0 {
+                rank_string.push_str(&empty_count.to_string());
+            }
+
+            if rank > 1 {
+                rank_string.push_str("/");
+            }
+
+            fen.push_str(&rank_string);
+        }
+
+        fen
+    }
+
+    pub fn from_fen_string(fen: &str) -> Result<Self, Box<dyn Error>> {
+        let mut board = Self::empty();
+
+        let mut rank = 8;
+        let mut file = 1;
+        for current_char in fen.chars() {
+            if current_char == '/' {
+                rank -= 1;
+                file = 1;
+                continue;
+            }
+
+            if file > 8 {
+                return Err(format!("File exceeds H in rank {rank}").into());
+            }
+
+            if let Ok(piece) = Piece::try_from(current_char) {
+                let color = if current_char.is_ascii_uppercase() {
+                    Color::White
+                } else {
+                    Color::Black
+                };
+                let square = Square::from_file_rank(file, rank);
+                board.set_piece(piece, color, square.get_value());
+                file += 1;
+            } else if let Some(count) = current_char.to_digit(10) {
+                if count > 8 || file + count as u8 > 9 {
+                    return Err(format!("Count exceeds 8 in rank {rank}").into());
+                }
+                file += count as u8;
+            } else {
+                return Err(format!("Invalid character '{current_char}' in rank {rank}").into());
+            }
+        }
+
+        Ok(board)
     }
 }
 

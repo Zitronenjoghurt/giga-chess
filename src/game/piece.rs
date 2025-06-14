@@ -1,4 +1,5 @@
 use crate::game::color::Color;
+use std::error::Error;
 
 pub const PIECES: [Piece; 6] = [
     Piece::Pawn,
@@ -39,6 +40,41 @@ impl Piece {
                 Self::Queen => "♛",
                 Self::King => "♚",
             }
+        }
+    }
+
+    pub fn get_char(&self) -> char {
+        match self {
+            Self::Pawn => 'P',
+            Self::Knight => 'N',
+            Self::Bishop => 'B',
+            Self::Rook => 'R',
+            Self::Queen => 'Q',
+            Self::King => 'K',
+        }
+    }
+
+    pub fn get_fen_char(&self, color: Color) -> char {
+        if color == Color::White {
+            self.get_char()
+        } else {
+            self.get_char().to_ascii_lowercase()
+        }
+    }
+}
+
+impl TryFrom<char> for Piece {
+    type Error = Box<dyn Error>;
+
+    fn try_from(value: char) -> Result<Self, Self::Error> {
+        match value {
+            'P' | 'p' => Ok(Self::Pawn),
+            'N' | 'n' => Ok(Self::Knight),
+            'B' | 'b' => Ok(Self::Bishop),
+            'R' | 'r' => Ok(Self::Rook),
+            'Q' | 'q' => Ok(Self::Queen),
+            'K' | 'k' => Ok(Self::King),
+            _ => Err(format!("Invalid piece character '{value}'").into()),
         }
     }
 }

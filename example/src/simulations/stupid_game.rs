@@ -12,7 +12,12 @@ pub fn run_stupid_game(engine: &Arc<Engine>, delay_ms: u64) -> impl Iterator<Ite
     std::iter::from_fn(move || {
         let moves = game.legal_moves();
         if moves.is_empty() {
-            println!("Winner: {:?}, Status: {:?}", game.winner(), game.status());
+            println!(
+                "Winner: {:?}, Status: {:?}\n{}",
+                game.winner(),
+                game.status(),
+                game.get_fen_string()
+            );
             return None;
         }
 
@@ -22,7 +27,8 @@ pub fn run_stupid_game(engine: &Arc<Engine>, delay_ms: u64) -> impl Iterator<Ite
         thread::sleep(Duration::from_millis(delay_ms));
 
         Some(format!(
-            "{:?}: {}\n{}",
+            "# {} | {:?}: {}\n{}",
+            game.full_moves(),
             game.side_to_move().opposite(),
             chosen,
             game.board().to_string()
