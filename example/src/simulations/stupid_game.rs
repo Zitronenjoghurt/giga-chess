@@ -14,13 +14,7 @@ pub fn run_stupid_game(engine: &Arc<Engine>, delay_ms: u64) -> impl Iterator<Ite
     std::iter::from_fn(move || {
         let moves = game.legal_moves();
         if moves.is_empty() {
-            println!(
-                "Winner: {:?}, Status: {:?}\n{}\n{}",
-                game.winner(),
-                game.status(),
-                game.get_fen_string(),
-                game.get_pgn()
-            );
+            on_end(&game, engine);
             return None;
         }
 
@@ -40,8 +34,18 @@ pub fn run_stupid_game(engine: &Arc<Engine>, delay_ms: u64) -> impl Iterator<Ite
             game.full_moves(),
             game.side_to_move().opposite(),
             game.latest_move_algebraic().unwrap(),
-            game.board().to_string(),
+            game.board(),
             possible_moves_algebraic,
         ))
     })
+}
+
+fn on_end(game: &Game, engine: &Arc<Engine>) {
+    println!(
+        "Winner: {:?}, Status: {:?}\n{}\n{}",
+        game.winner(),
+        game.status(),
+        game.get_fen_string(),
+        game.get_pgn()
+    );
 }

@@ -1,6 +1,6 @@
 use chrono::Local;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 #[cfg_attr(feature = "bincode", derive(bincode::Encode, bincode::Decode))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct PGNMetadata {

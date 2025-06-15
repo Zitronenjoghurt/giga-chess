@@ -201,4 +201,51 @@ impl Game {
     pub fn set_pgn_meta_data(&mut self, pgn_meta_data: PGNMetadata) {
         self.pgn_metadata = pgn_meta_data;
     }
+
+    pub fn archive(&self) -> ArchivedGame {
+        ArchivedGame {
+            pgn: self.pgn_metadata.clone(),
+            origin_fen: self.origin_fen.clone(),
+            played_moves: self.move_history.clone(),
+        }
+    }
+}
+
+#[cfg_attr(feature = "bincode", derive(bincode::Encode, bincode::Decode))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+/// The minimal information needed to recreate a game.
+pub struct ArchivedGame {
+    pgn: PGNMetadata,
+    origin_fen: Option<String>,
+    played_moves: Vec<ChessMove>,
+}
+
+impl ArchivedGame {
+    pub fn move_count(&self) -> u16 {
+        self.played_moves.len() as u16
+    }
+
+    pub fn restore(&self, engine: &Arc<Engine>) -> Game {
+        self.replay_till(engine, self.move_count())
+    }
+
+    pub fn replay_till(&self, engine: &Arc<Engine>, half_moves: u16) -> Game {
+        let mut game = if let Some(fen) = &self.origin_fen {
+            Game::from_fen_string(engine, fen)
+                .unwrap_or_else(|_| Game::new(engine, self.pgn.clone()))
+        } else {
+            Game::new(engine, self.pgn.clone())
+        };
+
+        for chess_move in self.played_moves.iter().take(half_moves as usize) {
+            game.play_move(engine, *chess_move);
+        }
+
+        game
+    }
+
+    pub fn replay_iter(&self, engine: &Arc<Engine>) -> impl Iterator<Item = Game> + '_ {
+        let engine = engine.clone();
+        (0..=self.move_count()).map(move |move_count| self.replay_till(&engine, move_count))
+    }
 }
