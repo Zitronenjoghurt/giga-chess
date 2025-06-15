@@ -74,46 +74,68 @@ pub const H8: u8 = 63;
 pub struct Square(u8);
 
 impl Square {
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub const fn new(value: u8) -> Self {
         Self(value)
     }
 
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn from_file_rank(file: u8, rank: u8) -> Self {
         Self((file - 1) + (rank - 1) * 8)
     }
 
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn is_white(&self) -> bool {
         (self.get_file() + self.get_rank()) % 2 == 0
     }
 
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn get_value(&self) -> u8 {
         self.0
     }
 
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn get_rank(&self) -> u8 {
         (self.0 / 8) + 1
     }
 
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn get_file(&self) -> u8 {
         (self.0 % 8) + 1
     }
 
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn is_left_edge(&self) -> bool {
         self.0 % 8 == 0
     }
 
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn is_right_edge(&self) -> bool {
         self.0 % 8 == 7
     }
 
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn is_upper_edge(&self) -> bool {
         self.0 >= 56
     }
 
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn is_lower_edge(&self) -> bool {
         self.0 <= 7
     }
 
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn index_left(&self) -> Option<u8> {
         if self.is_left_edge() {
             None
@@ -122,6 +144,8 @@ impl Square {
         }
     }
 
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn index_right(&self) -> Option<u8> {
         if self.is_right_edge() {
             None
@@ -130,6 +154,8 @@ impl Square {
         }
     }
 
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn index_up(&self) -> Option<u8> {
         if self.is_upper_edge() {
             None
@@ -138,6 +164,8 @@ impl Square {
         }
     }
 
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn index_down(&self) -> Option<u8> {
         if self.is_lower_edge() {
             None
@@ -146,6 +174,8 @@ impl Square {
         }
     }
 
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn index_up_right(&self) -> Option<u8> {
         if self.is_upper_edge() || self.is_right_edge() {
             None
@@ -154,6 +184,8 @@ impl Square {
         }
     }
 
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn index_up_left(&self) -> Option<u8> {
         if self.is_upper_edge() || self.is_left_edge() {
             None
@@ -162,6 +194,8 @@ impl Square {
         }
     }
 
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn index_down_right(&self) -> Option<u8> {
         if self.is_lower_edge() || self.is_right_edge() {
             None
@@ -170,6 +204,8 @@ impl Square {
         }
     }
 
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn index_down_left(&self) -> Option<u8> {
         if self.is_lower_edge() || self.is_left_edge() {
             None
@@ -178,6 +214,8 @@ impl Square {
         }
     }
 
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn index_jump(&self, file: i8, rank: i8) -> Option<u8> {
         let current_file = self.get_file();
         let current_rank = self.get_rank();
@@ -230,6 +268,8 @@ impl Square {
         })
     }
 
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn get_file_char(&self) -> char {
         match self.get_file() {
             1 => 'A',
@@ -240,8 +280,22 @@ impl Square {
             6 => 'F',
             7 => 'G',
             8 => 'H',
-            _ => unreachable!(),
+            _ => '?',
         }
+    }
+
+    pub fn iter_bottom_top() -> impl Iterator<Item = Square> {
+        (0..64).map(Square::new)
+    }
+
+    pub fn iter_top_bottom() -> impl Iterator<Item = Square> {
+        (1..=8)
+            .rev()
+            .flat_map(|rank| (1..=8).map(move |file| Square::from_file_rank(file, rank)))
+    }
+
+    pub fn iter_indices() -> impl Iterator<Item = u8> {
+        0..64
     }
 }
 

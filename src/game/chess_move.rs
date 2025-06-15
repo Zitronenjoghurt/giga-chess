@@ -11,7 +11,7 @@ pub struct ChessMove(u16);
 
 impl ChessMove {
     pub fn new(from: u8, to: u8, move_type: ChessMoveType) -> Self {
-        Self(((from as u16) << 10) | ((to as u16) << 4) | (move_type as u16))
+        Self(((from as u16) << 10) | (((to & 0b111111) as u16) << 4) | (move_type as u16))
     }
 
     pub fn all_promotions(from: u8, to: u8) -> Vec<Self> {

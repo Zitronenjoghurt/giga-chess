@@ -335,7 +335,7 @@ impl Engine {
                         game_state.side_to_move.opposite(),
                     )
                 {
-                    moves.push(ChessMove::new(0, 0, ChessMoveType::KingCastle));
+                    moves.push(ChessMove::new(4, 6, ChessMoveType::KingCastle));
                 }
                 if game_state.castling_rights.white_queen_side
                     && (occupied_mask.get_value() & 0xE) == 0
@@ -355,7 +355,7 @@ impl Engine {
                         game_state.side_to_move.opposite(),
                     )
                 {
-                    moves.push(ChessMove::new(0, 0, ChessMoveType::QueenCastle))
+                    moves.push(ChessMove::new(4, 2, ChessMoveType::QueenCastle))
                 }
             }
             Color::Black => {
@@ -377,7 +377,7 @@ impl Engine {
                         game_state.side_to_move.opposite(),
                     )
                 {
-                    moves.push(ChessMove::new(0, 0, ChessMoveType::KingCastle));
+                    moves.push(ChessMove::new(60, 62, ChessMoveType::KingCastle));
                 }
                 if game_state.castling_rights.black_queen_side
                     && (occupied_mask.get_value() & 0xE00000000000000) == 0
@@ -397,7 +397,7 @@ impl Engine {
                         game_state.side_to_move.opposite(),
                     )
                 {
-                    moves.push(ChessMove::new(0, 0, ChessMoveType::QueenCastle));
+                    moves.push(ChessMove::new(60, 58, ChessMoveType::QueenCastle));
                 }
             }
         };

@@ -21,21 +21,11 @@ const DEFAULT_BOARD: ChessBoard = ChessBoard([
     BitBoard::new(0b00010000_00000000_00000000_00000000_00000000_00000000_00000000_00000000),
 ]);
 
+type ChessBoardIterator<'a> = Box<dyn Iterator<Item = (Square, Option<(Piece, Color)>)> + 'a>;
+
 /// A chess board containing 12 bit boards for each piece and color.
+///
 /// Square indexing starts with 0 at A1, 1 at B1, ... and ends with 63 at H8.
-/// The bit boards are indexed as follows:
-/// 0: White Pawns
-/// 1: White Knights
-/// 2: White Bishops
-/// 3: White Rooks
-/// 4: White Queens
-/// 5: White Kings
-/// 6: Black Pawns
-/// 7: Black Knights
-/// 8: Black Bishops
-/// 9: Black Rooks
-/// 10: Black Queens
-/// 11: Black Kings
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 #[cfg_attr(feature = "bincode", derive(bincode::Encode, bincode::Decode))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -43,32 +33,173 @@ const DEFAULT_BOARD: ChessBoard = ChessBoard([
 pub struct ChessBoard([BitBoard; 12]);
 
 impl ChessBoard {
-    #[inline(always)]
+    /// Creates a new chess board from the given bitboards.
+    ///
+    /// The bit boards are indexed as follows:\
+    /// 0: White Pawns\
+    /// 1: White Knights\
+    /// 2: White Bishops\
+    /// 3: White Rooks\
+    /// 4: White Queens\
+    /// 5: White Kings\
+    /// 6: Black Pawns\
+    /// 7: Black Knights\
+    /// 8: Black Bishops\
+    /// 9: Black Rooks\
+    /// 10: Black Queens\
+    /// 11: Black Kings
+    ///
+    /// # Arguments
+    ///
+    /// * `bit_boards`: 12 bitboards for each piece and color.
+    ///
+    /// returns: [`ChessBoard`]
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use giga_chess::game::bit_board::BitBoard;
+    /// use giga_chess::prelude::*;
+    ///
+    /// let boards = [
+    ///     BitBoard::new(0b00000000_00000000_00000000_00000000_00000000_00000000_11111111_00000000),
+    ///     BitBoard::new(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_01000010),
+    ///     BitBoard::new(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00100100),
+    ///     BitBoard::new(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_10000001),
+    ///     BitBoard::new(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00001000),
+    ///     BitBoard::new(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00010000),
+    ///     BitBoard::new(0b00000000_11111111_00000000_00000000_00000000_00000000_00000000_00000000),
+    ///     BitBoard::new(0b01000010_00000000_00000000_00000000_00000000_00000000_00000000_00000000),
+    ///     BitBoard::new(0b00100100_00000000_00000000_00000000_00000000_00000000_00000000_00000000),
+    ///     BitBoard::new(0b10000001_00000000_00000000_00000000_00000000_00000000_00000000_00000000),
+    ///     BitBoard::new(0b00001000_00000000_00000000_00000000_00000000_00000000_00000000_00000000),
+    ///     BitBoard::new(0b00010000_00000000_00000000_00000000_00000000_00000000_00000000_00000000),
+    /// ];
+    ///
+    /// let chess_board = ChessBoard::new(boards);
+    /// assert_eq!(chess_board.get_piece_at(A1), Some((Piece::Rook, Color::White)));
+    /// assert_eq!(chess_board.get_piece_at(H8), Some((Piece::Rook, Color::Black)));
+    /// assert_eq!(chess_board.get_piece_at(E2), Some((Piece::Pawn, Color::White)));
+    /// assert_eq!(chess_board.get_piece_at(E3), None);
+    /// ```
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub const fn new(bit_boards: [BitBoard; 12]) -> Self {
         Self(bit_boards)
     }
 
-    #[inline(always)]
+    /// Creates a new [`ChessBoard`] without any pieces.
+    ///
+    /// returns: [`ChessBoard`]
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use giga_chess::prelude::*;
+    ///
+    /// let chess_board = ChessBoard::empty();
+    /// assert_eq!(chess_board.get_piece_at(A1), None);
+    /// assert_eq!(chess_board.get_piece_at(H8), None);
+    /// assert_eq!(chess_board.get_piece_at(E2), None);
+    /// assert_eq!(chess_board.get_piece_at(E3), None);
+    /// ```
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub const fn empty() -> Self {
         Self([BitBoard::empty(); 12])
     }
 
-    #[inline(always)]
+    /// Creates a new [`ChessBoard`] with the standard placement of pieces.
+    ///
+    /// returns: [`ChessBoard`]
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use giga_chess::prelude::*;
+    ///
+    /// let chess_board = ChessBoard::default();
+    /// assert_eq!(chess_board.get_piece_at(A1), Some((Piece::Rook, Color::White)));
+    /// assert_eq!(chess_board.get_piece_at(H8), Some((Piece::Rook, Color::Black)));
+    /// assert_eq!(chess_board.get_piece_at(E2), Some((Piece::Pawn, Color::White)));
+    /// assert_eq!(chess_board.get_piece_at(E3), None);
+    /// ```
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub const fn default() -> Self {
         DEFAULT_BOARD
     }
 
-    #[inline(always)]
+    /// Retrieve the [`BitBoard`] of the respective piece and color.
+    ///
+    /// # Arguments
+    /// * `piece`: The piece to retrieve the bit board for
+    /// * `color`: The color to retrieve the bit board for
+    ///
+    /// returns: [`BitBoard`]
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use giga_chess::prelude::*;
+    ///
+    /// let chess_board = ChessBoard::default();
+    /// let white_rooks = chess_board.get_piece_bb(Piece::Rook, Color::White);
+    ///
+    /// assert!(white_rooks.get_bit(H1));
+    /// ```
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn get_piece_bb(&self, piece: Piece, color: Color) -> BitBoard {
         self.0[piece as usize + (color as usize * 6)]
     }
 
-    #[inline(always)]
+    /// Retrieve a mutable reference to the [`BitBoard`] of the respective piece and color.
+    ///
+    /// # Arguments
+    /// * `piece`: The piece to retrieve the bit board for
+    /// * `color`: The color to retrieve the bit board for
+    ///
+    /// returns: &mut [`BitBoard`]
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use giga_chess::prelude::*;
+    ///
+    /// let mut chess_board = ChessBoard::empty();
+    /// let white_rooks = chess_board.get_piece_bb_mut(Piece::Rook, Color::White);
+    /// white_rooks.set_bit(B5);
+    ///
+    /// assert_eq!(chess_board.get_piece_at(B5), Some((Piece::Rook, Color::White)));
+    /// ```
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn get_piece_bb_mut(&mut self, piece: Piece, color: Color) -> &mut BitBoard {
         &mut self.0[piece as usize + (color as usize * 6)]
     }
 
-    #[inline(always)]
+    /// Retrieve a bitboard which contains all piece positions of the respective color (occupation mask).
+    ///
+    /// # Arguments
+    /// * `color`: The color to retrieve the occupation mask for
+    ///
+    /// returns: [`BitBoard`]
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use giga_chess::prelude::*;
+    ///
+    /// let chess_board = ChessBoard::default();
+    /// let white_occupation = chess_board.get_color_bb(Color::White);
+    /// let black_occupation = chess_board.get_color_bb(Color::Black);
+    ///
+    /// assert_eq!(white_occupation.get_value(), 0x000000000000FFFF);
+    /// assert_eq!(black_occupation.get_value(), 0xFFFF000000000000);
+    /// ```
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn get_color_bb(&self, color: Color) -> BitBoard {
         let base = color as usize * 6;
         self.0[base]
@@ -79,29 +210,117 @@ impl ChessBoard {
             | self.0[base + 5]
     }
 
-    #[inline(always)]
+    /// Retrieve a bitboard which contains all piece positions (total occupation mask).
+    ///
+    /// returns: [`BitBoard`]
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use giga_chess::prelude::*;
+    ///
+    /// let chess_board = ChessBoard::default();
+    /// let occupation = chess_board.get_occupied_bb();
+    ///
+    /// assert_eq!(occupation.get_value(), 0xFFFF00000000FFFF);
+    /// ```
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn get_occupied_bb(&self) -> BitBoard {
         self.get_color_bb(Color::White) | self.get_color_bb(Color::Black)
     }
 
-    #[inline(always)]
+    /// Place a piece of a certain color on the specified square.
+    ///
+    /// # Arguments
+    /// * `piece`: The piece to place
+    /// * `color`: The color of the piece to place
+    /// * `square`: Where to place the piece
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use giga_chess::prelude::*;
+    ///
+    /// let mut chess_board = ChessBoard::empty();
+    /// chess_board.set_piece(Piece::Queen, Color::White, D5);
+    ///
+    /// assert_eq!(chess_board.get_piece_at(D5), Some((Piece::Queen, Color::White)));
+    /// ```
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn set_piece(&mut self, piece: Piece, color: Color, square: u8) {
         self.get_piece_bb_mut(piece, color).set_bit(square);
     }
 
-    #[inline(always)]
+    /// Clear a piece of a certain color from the specified square.
+    ///
+    /// # Arguments
+    /// * `piece`: The piece to clear
+    /// * `color`: The color of the piece to clear
+    /// * `square`: Where to clear the piece
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use giga_chess::prelude::*;
+    ///
+    /// let mut chess_board = ChessBoard::default();
+    /// chess_board.clear_piece(Piece::King, Color::White, E1);
+    ///
+    /// assert_eq!(chess_board.get_piece_at(E1), None);
+    /// ```
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn clear_piece(&mut self, piece: Piece, color: Color, square: u8) {
         self.get_piece_bb_mut(piece, color).clear_bit(square);
     }
 
-    #[inline(always)]
+    /// Move a piece of a certain color from a specified square to another square.
+    ///
+    /// # Arguments
+    /// * `piece`: The piece to move
+    /// * `color`: The color of the piece to move
+    /// * `from`: Where the piece is currently at
+    /// * `to`: Where to move the piece to
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use giga_chess::prelude::*;
+    ///
+    /// let mut chess_board = ChessBoard::default();
+    /// chess_board.move_piece(Piece::Pawn, Color::White, E2, E4);
+    ///
+    /// assert_eq!(chess_board.get_piece_at(E2), None);
+    /// assert_eq!(chess_board.get_piece_at(E4), Some((Piece::Pawn, Color::White)));
+    /// ```
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn move_piece(&mut self, piece: Piece, color: Color, from: u8, to: u8) {
         let bb = self.get_piece_bb_mut(piece, color);
         bb.clear_bit(from);
         bb.set_bit(to);
     }
 
-    #[inline(always)]
+    /// Retrieves the piece and its color at a specified square.
+    ///
+    /// # Arguments
+    /// * `square`: The square to search for a piece at
+    ///
+    /// returns: Option<([`Piece`], [`Color`])>
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use giga_chess::prelude::*;
+    ///
+    /// let mut chess_board = ChessBoard::default();
+    /// assert_eq!(chess_board.get_piece_at(B1), Some((Piece::Knight, Color::White)));
+    /// assert_eq!(chess_board.get_piece_at(B3), None);
+    /// ```
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn get_piece_at(&self, square: u8) -> Option<(Piece, Color)> {
         for color in COLORS {
             if let Some(piece) = self.get_piece_at_with_color(square, color) {
@@ -111,7 +330,26 @@ impl ChessBoard {
         None
     }
 
-    #[inline(always)]
+    /// Retrieves the piece with the specified color at the specified square.\
+    /// This is faster than searching for the piece without knowing its color.
+    ///
+    /// # Arguments
+    /// * `square`: The square to search for a piece at
+    /// * `color`: The color of the piece to search for
+    ///
+    /// returns: Option<[`Piece`]>
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use giga_chess::prelude::*;
+    ///
+    /// let mut chess_board = ChessBoard::default();
+    /// assert_eq!(chess_board.get_piece_at_with_color(B1, Color::White), Some(Piece::Knight));
+    /// assert_eq!(chess_board.get_piece_at_with_color(B1, Color::Black), None);
+    /// ```
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn get_piece_at_with_color(&self, square: u8, color: Color) -> Option<Piece> {
         PIECES
             .into_iter()
@@ -194,7 +432,29 @@ impl ChessBoard {
         self.capture(to, color.opposite());
     }
 
-    /// The chess board is dumb; it assumes that the moves it receives are valid.
+    /// Play a move for the specified color (in a new chess board instance).\
+    /// ATTENTION!: The board assumes all passed moves are valid. The board is dumb, use the [`crate::engine::Engine`] to generate valid moves.
+    ///
+    /// # Arguments
+    /// * `chess_move`: The move to play
+    /// * `color`: The color which plays this move
+    ///
+    /// returns: [`ChessBoard`]
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use giga_chess::prelude::*;
+    ///
+    /// let chess_board = ChessBoard::default();
+    ///
+    /// // Usually you would let the Game generate currently legal moves
+    /// let chess_move = ChessMove::new(E2, E3, ChessMoveType::Quiet);
+    ///
+    /// let new_board = chess_board.play_move(chess_move, Color::White);
+    /// assert_eq!(new_board.get_piece_at(E2), None);
+    /// assert_eq!(new_board.get_piece_at(E3), Some((Piece::Pawn, Color::White)));
+    /// ```
     pub fn play_move(&self, chess_move: ChessMove, color: Color) -> Self {
         let mut new_board = *self;
         let from = chess_move.get_from();
@@ -234,6 +494,22 @@ impl ChessBoard {
         new_board
     }
 
+    /// Returns the FEN string for the current board state.
+    ///
+    /// returns: String
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use giga_chess::prelude::*;
+    ///
+    /// let chess_board = ChessBoard::default();
+    ///
+    /// assert_eq!(
+    ///     chess_board.get_fen_string(),
+    ///     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
+    /// );
+    /// ```
     pub fn get_fen_string(&self) -> String {
         let mut fen = String::new();
 
@@ -268,6 +544,22 @@ impl ChessBoard {
         fen
     }
 
+    /// Tries to build a chess board from the given FEN string.\
+    /// Only pass the board part of the full FEN string.
+    ///
+    /// returns: Result<[`ChessBoard`], Box<dyn std::error::Error>>
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use giga_chess::prelude::*;
+    ///
+    /// let chess_board = ChessBoard::from_fen_string(
+    ///     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
+    /// ).unwrap();
+    ///
+    /// assert_eq!(chess_board, ChessBoard::default());
+    /// ```
     pub fn from_fen_string(fen: &str) -> Result<Self, Box<dyn Error>> {
         let mut board = Self::empty();
 
@@ -305,24 +597,90 @@ impl ChessBoard {
 
         Ok(board)
     }
+
+    /// Iterate over all squares of the chess board top to bottom, left to right.
+    ///
+    /// # Arguments
+    /// * `perspective`: The perspective of the player from which to iterate over the squares
+    ///
+    /// returns: Iterator<Item = (Square, Option<(Piece, Color)>)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use giga_chess::prelude::*;
+    ///
+    /// let chess_board = ChessBoard::default();
+    ///
+    /// let mut result = String::new();
+    /// for (square, piece_color) in chess_board.iter_top_bottom(Color::White) {
+    ///     if let Some((piece, color)) = piece_color {
+    ///         result.push_str(piece.get_icon(color));
+    ///     } else if square.is_white() {
+    ///         result.push_str("□ ");
+    ///     } else {
+    ///         result.push_str("■ ");
+    ///     }
+    ///     if square.is_right_edge() && !square.is_lower_edge() {
+    ///         result.push_str("\n");
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(result, "♜♞♝♛♚♝♞♜\n♟♟♟♟♟♟♟♟\n■ □ ■ □ ■ □ ■ □ \n□ ■ □ ■ □ ■ □ ■ \n■ □ ■ □ ■ □ ■ □ \n□ ■ □ ■ □ ■ □ ■ \n♙♙♙♙♙♙♙♙\n♖♘♗♕♔♗♘♖");
+    /// ```
+    pub fn iter_top_bottom(&self, perspective: Color) -> ChessBoardIterator {
+        match perspective {
+            Color::White => Box::new(
+                Square::iter_top_bottom()
+                    .map(move |square| (square, self.get_piece_at(square.get_value()))),
+            ),
+            Color::Black => Box::new(
+                Square::iter_bottom_top()
+                    .map(move |square| (square, self.get_piece_at(square.get_value()))),
+            ),
+        }
+    }
+
+    /// Iterate over all squares of the chess board bottom to top, left to right.
+    ///
+    /// # Arguments
+    /// * `perspective`: The perspective of the player from which to iterate over the squares
+    ///
+    /// returns: Iterator<Item = (Square, Option<(Piece, Color)>)
+    pub fn iter_bottom_top(&self, perspective: Color) -> ChessBoardIterator {
+        match perspective {
+            Color::White => Box::new(
+                Square::iter_bottom_top()
+                    .map(move |square| (square, self.get_piece_at(square.get_value()))),
+            ),
+            Color::Black => Box::new(
+                Square::iter_top_bottom()
+                    .map(move |square| (square, self.get_piece_at(square.get_value()))),
+            ),
+        }
+    }
 }
 
 impl Display for ChessBoard {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        for rank in (1..=8).rev() {
-            write!(f, "{} ", rank)?;
-            for file in 1..=8 {
-                let square = Square::from_file_rank(file, rank);
-                if let Some((piece, color)) = self.get_piece_at(square.get_value()) {
-                    write!(f, "{} ", piece.get_icon(color))?;
-                } else if square.is_white() {
-                    write!(f, "□ ")?;
-                } else {
-                    write!(f, "■ ")?;
-                };
+        for (square, piece_color) in self.iter_top_bottom(Color::White) {
+            if square.is_left_edge() {
+                write!(f, "{} ", square.get_rank())?;
             }
-            writeln!(f)?;
+
+            if let Some((piece, color)) = piece_color {
+                write!(f, "{} ", piece.get_icon(color))?;
+            } else if square.is_white() {
+                write!(f, "□ ")?;
+            } else {
+                write!(f, "■ ")?;
+            }
+
+            if square.is_right_edge() {
+                writeln!(f)?;
+            }
         }
+
         writeln!(f, "  A B C D E F G H")?;
         Ok(())
     }

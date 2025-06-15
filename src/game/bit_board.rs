@@ -317,7 +317,8 @@ pub struct BitBoardIter {
 impl Iterator for BitBoardIter {
     type Item = u8;
 
-    #[inline(always)]
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     fn next(&mut self) -> Option<Self::Item> {
         if self.bits == 0 {
             return None;

@@ -63,8 +63,8 @@ impl GameState {
 
         if move_type == ChessMoveType::DoublePawnPush {
             self.en_passant_square = match self.side_to_move {
-                Color::White => Some(move_from - 8),
-                Color::Black => Some(move_from + 8),
+                Color::White => Some(move_from + 8),
+                Color::Black => Some(move_from - 8),
             }
         } else {
             self.en_passant_square = None;
