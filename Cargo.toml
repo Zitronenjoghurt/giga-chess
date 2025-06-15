@@ -24,3 +24,6 @@ harness = false
 [[bin]]
 name = "magic-numbers"
 path = "bin/magic_numbers.rs"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin)'] }

@@ -161,7 +161,7 @@ impl Game {
             .format(self.get_result_pgn(), self.origin_fen.as_deref());
 
         if !pgn.is_empty() && !self.algebraic_history.is_empty() {
-            pgn.push_str("\n");
+            pgn.push('\n');
         }
 
         for (i, algebraic_move) in self.algebraic_history.iter().enumerate() {
@@ -174,7 +174,7 @@ impl Game {
         }
 
         if let Some(result) = self.get_result_pgn() {
-            pgn.push_str(&format!("{}", result));
+            pgn.push_str(result);
         }
 
         pgn

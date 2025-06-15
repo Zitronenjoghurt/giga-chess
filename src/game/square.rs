@@ -183,7 +183,7 @@ impl Square {
         let current_rank = self.get_rank();
         let new_file = current_file as i8 + file;
         let new_rank = current_rank as i8 + rank;
-        if new_file < 1 || new_file > 8 || new_rank < 1 || new_rank > 8 {
+        if !(1..=8).contains(&new_file) || !(1..=8).contains(&new_rank) {
             None
         } else {
             Some(Square::from_file_rank(new_file as u8, new_rank as u8).get_value())

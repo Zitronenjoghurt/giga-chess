@@ -56,11 +56,7 @@ impl Engine {
         let future_board = game_state
             .board
             .play_move(chess_move, game_state.side_to_move);
-        if !self.is_in_check(future_board, game_state.side_to_move) {
-            true
-        } else {
-            false
-        }
+        !self.is_in_check(future_board, game_state.side_to_move)
     }
 
     pub fn is_in_check(&self, board: ChessBoard, color: Color) -> bool {
@@ -323,81 +319,85 @@ impl Engine {
             Color::White => {
                 if game_state.castling_rights.white_king_side
                     && (occupied_mask.get_value() & 0x60) == 0
-                {
-                    if !self.is_square_attacked(
+                    && !self.is_square_attacked(
                         game_state.board,
                         4,
                         game_state.side_to_move.opposite(),
-                    ) && !self.is_square_attacked(
+                    )
+                    && !self.is_square_attacked(
                         game_state.board,
                         5,
                         game_state.side_to_move.opposite(),
-                    ) && !self.is_square_attacked(
+                    )
+                    && !self.is_square_attacked(
                         game_state.board,
                         6,
                         game_state.side_to_move.opposite(),
-                    ) {
-                        moves.push(ChessMove::new(0, 0, ChessMoveType::KingCastle));
-                    }
+                    )
+                {
+                    moves.push(ChessMove::new(0, 0, ChessMoveType::KingCastle));
                 }
                 if game_state.castling_rights.white_queen_side
                     && (occupied_mask.get_value() & 0xE) == 0
-                {
-                    if !self.is_square_attacked(
+                    && !self.is_square_attacked(
                         game_state.board,
                         2,
                         game_state.side_to_move.opposite(),
-                    ) && !self.is_square_attacked(
+                    )
+                    && !self.is_square_attacked(
                         game_state.board,
                         3,
                         game_state.side_to_move.opposite(),
-                    ) && !self.is_square_attacked(
+                    )
+                    && !self.is_square_attacked(
                         game_state.board,
                         4,
                         game_state.side_to_move.opposite(),
-                    ) {
-                        moves.push(ChessMove::new(0, 0, ChessMoveType::QueenCastle))
-                    };
+                    )
+                {
+                    moves.push(ChessMove::new(0, 0, ChessMoveType::QueenCastle))
                 }
             }
             Color::Black => {
                 if game_state.castling_rights.black_king_side
                     && (occupied_mask.get_value() & 0x6000000000000000) == 0
-                {
-                    if !self.is_square_attacked(
+                    && !self.is_square_attacked(
                         game_state.board,
                         60,
                         game_state.side_to_move.opposite(),
-                    ) && !self.is_square_attacked(
+                    )
+                    && !self.is_square_attacked(
                         game_state.board,
                         61,
                         game_state.side_to_move.opposite(),
-                    ) && !self.is_square_attacked(
+                    )
+                    && !self.is_square_attacked(
                         game_state.board,
                         62,
                         game_state.side_to_move.opposite(),
-                    ) {
-                        moves.push(ChessMove::new(0, 0, ChessMoveType::KingCastle));
-                    }
+                    )
+                {
+                    moves.push(ChessMove::new(0, 0, ChessMoveType::KingCastle));
                 }
                 if game_state.castling_rights.black_queen_side
                     && (occupied_mask.get_value() & 0xE00000000000000) == 0
-                {
-                    if !self.is_square_attacked(
+                    && !self.is_square_attacked(
                         game_state.board,
                         58,
                         game_state.side_to_move.opposite(),
-                    ) && !self.is_square_attacked(
+                    )
+                    && !self.is_square_attacked(
                         game_state.board,
                         59,
                         game_state.side_to_move.opposite(),
-                    ) && !self.is_square_attacked(
+                    )
+                    && !self.is_square_attacked(
                         game_state.board,
                         60,
                         game_state.side_to_move.opposite(),
-                    ) {
-                        moves.push(ChessMove::new(0, 0, ChessMoveType::QueenCastle));
-                    }
+                    )
+                {
+                    moves.push(ChessMove::new(0, 0, ChessMoveType::QueenCastle));
                 }
             }
         };

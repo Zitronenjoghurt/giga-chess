@@ -45,7 +45,7 @@ pub fn find_rook_magics() -> [u64; 64] {
 
 fn precalculate_attacks(
     square: u8,
-    occupancies: &Vec<BitBoard>,
+    occupancies: &[BitBoard],
     attack_fn: fn(u8, BitBoard) -> BitBoard,
 ) -> Vec<BitBoard> {
     occupancies

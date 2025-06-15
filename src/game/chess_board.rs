@@ -113,12 +113,9 @@ impl ChessBoard {
 
     #[inline(always)]
     pub fn get_piece_at_with_color(&self, square: u8, color: Color) -> Option<Piece> {
-        for piece in PIECES {
-            if self.get_piece_bb(piece, color).get_bit(square) {
-                return Some(piece);
-            }
-        }
-        None
+        PIECES
+            .into_iter()
+            .find(|&piece| self.get_piece_bb(piece, color).get_bit(square))
     }
 
     fn move_color(&mut self, from: u8, to: u8, color: Color) {
@@ -262,7 +259,7 @@ impl ChessBoard {
             }
 
             if rank > 1 {
-                rank_string.push_str("/");
+                rank_string.push('/');
             }
 
             fen.push_str(&rank_string);
@@ -318,17 +315,15 @@ impl Display for ChessBoard {
                 let square = Square::from_file_rank(file, rank);
                 if let Some((piece, color)) = self.get_piece_at(square.get_value()) {
                     write!(f, "{} ", piece.get_icon(color))?;
+                } else if square.is_white() {
+                    write!(f, "□ ")?;
                 } else {
-                    if square.is_white() {
-                        write!(f, "□ ")?;
-                    } else {
-                        write!(f, "■ ")?;
-                    }
+                    write!(f, "■ ")?;
                 };
             }
-            write!(f, "\n")?;
+            writeln!(f)?;
         }
-        write!(f, "  A B C D E F G H\n")?;
+        writeln!(f, "  A B C D E F G H")?;
         Ok(())
     }
 }

@@ -30,7 +30,8 @@ impl BitBoard {
     ///
     /// assert_eq!(bb.get_value(), value);
     /// ```
-    #[inline(always)]
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub const fn new(value: u64) -> Self {
         Self(value)
     }
@@ -47,7 +48,8 @@ impl BitBoard {
     ///
     /// assert_eq!(bb.get_value(), 0);
     /// ```
-    #[inline(always)]
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub const fn empty() -> Self {
         Self(0)
     }
@@ -65,7 +67,8 @@ impl BitBoard {
     ///
     /// assert_eq!(bb.get_value(), value);
     /// ```
-    #[inline(always)]
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn get_value(&self) -> u64 {
         self.0
     }
@@ -84,7 +87,8 @@ impl BitBoard {
     /// assert!(!not_empty.is_empty());
     /// assert!(empty.is_empty());
     /// ```
-    #[inline(always)]
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn is_empty(&self) -> bool {
         self.0 == 0
     }
@@ -111,7 +115,8 @@ impl BitBoard {
     /// assert!(bb.get_bit(4));
     /// assert!(!bb.get_bit(5));
     /// ```
-    #[inline(always)]
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn get_bit(&self, index: u8) -> bool {
         (self.0 & (1u64 << index)) != 0u64
     }
@@ -134,7 +139,8 @@ impl BitBoard {
     ///
     /// assert_eq!(bb.get_value(), 0b100101);
     /// ```
-    #[inline(always)]
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn set_bit(&mut self, index: u8) {
         self.0 |= 1u64 << index;
     }
@@ -157,7 +163,8 @@ impl BitBoard {
     ///
     /// assert_eq!(bb.get_value(), 0);
     /// ```
-    #[inline(always)]
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn clear_bit(&mut self, index: u8) {
         self.0 &= !(1u64 << index);
     }
@@ -174,7 +181,8 @@ impl BitBoard {
     ///
     /// assert_eq!(bb.count_set_bits(), 3);
     /// ```
-    #[inline(always)]
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn count_set_bits(&self) -> u8 {
         self.0.count_ones() as u8
     }
@@ -195,7 +203,8 @@ impl BitBoard {
     /// let bb_2 = BitBoard::empty();
     /// assert_eq!(bb_2.get_lowest_set_bit(), None);
     /// ```
-    #[inline(always)]
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn get_lowest_set_bit(&self) -> Option<u8> {
         if self.0 == 0 {
             return None;
@@ -219,7 +228,8 @@ impl BitBoard {
     /// assert_eq!(bb.pop_lowest_set_bit(), Some(5));
     /// assert_eq!(bb.pop_lowest_set_bit(), None);
     /// ```
-    #[inline(always)]
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn pop_lowest_set_bit(&mut self) -> Option<u8> {
         let lsb_index = self.get_lowest_set_bit()?;
         self.0 &= self.0 - 1;
@@ -245,7 +255,8 @@ impl BitBoard {
     ///
     /// assert_eq!(indices, vec![0, 2, 5]);
     /// ```
-    #[inline(always)]
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn iter_set_bits(&self) -> BitBoardIter {
         BitBoardIter { bits: self.0 }
     }
@@ -329,7 +340,7 @@ impl Display for BitBoard {
                     write!(f, "0 ")?;
                 }
             }
-            write!(f, "\n")?;
+            writeln!(f)?;
         }
         Ok(())
     }

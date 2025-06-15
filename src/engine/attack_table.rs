@@ -282,7 +282,7 @@ pub fn build_pawn_attacks() -> [[BitBoard; 64]; 2] {
 pub fn build_knight_attacks() -> [BitBoard; 64] {
     let mut table = [BitBoard::empty(); 64];
 
-    for index in 0usize..64 {
+    for (index, bb) in table.iter_mut().enumerate() {
         let square = Square::new(index as u8);
 
         let mut attacks = 0u64;
@@ -311,7 +311,7 @@ pub fn build_knight_attacks() -> [BitBoard; 64] {
             attacks |= 1 << index;
         }
 
-        table[index] = BitBoard::new(attacks);
+        *bb = BitBoard::new(attacks);
     }
 
     table
@@ -320,7 +320,7 @@ pub fn build_knight_attacks() -> [BitBoard; 64] {
 pub fn build_king_attacks() -> [BitBoard; 64] {
     let mut table = [BitBoard::empty(); 64];
 
-    for index in 0usize..64 {
+    for (index, bb) in table.iter_mut().enumerate() {
         let square = Square::new(index as u8);
 
         let mut attacks = 0u64;
@@ -349,7 +349,7 @@ pub fn build_king_attacks() -> [BitBoard; 64] {
             attacks |= 1 << index;
         }
 
-        table[index] = BitBoard::new(attacks);
+        *bb = BitBoard::new(attacks);
     }
 
     table
@@ -358,7 +358,7 @@ pub fn build_king_attacks() -> [BitBoard; 64] {
 pub fn build_bishop_masks() -> [BitBoard; 64] {
     let mut table = [BitBoard::empty(); 64];
 
-    for index in 0usize..64 {
+    for (index, bb) in table.iter_mut().enumerate() {
         let square = Square::new(index as u8);
 
         let mut mask = 0u64;
@@ -375,7 +375,7 @@ pub fn build_bishop_masks() -> [BitBoard; 64] {
             mask |= 1 << index;
         }
 
-        table[index] = BitBoard::new(mask);
+        *bb = BitBoard::new(mask);
     }
 
     table
@@ -384,7 +384,7 @@ pub fn build_bishop_masks() -> [BitBoard; 64] {
 pub fn build_rook_masks() -> [BitBoard; 64] {
     let mut table = [BitBoard::empty(); 64];
 
-    for index in 0usize..64 {
+    for (index, bb) in table.iter_mut().enumerate() {
         let square = Square::new(index as u8);
 
         let mut mask = 0u64;
@@ -401,7 +401,7 @@ pub fn build_rook_masks() -> [BitBoard; 64] {
             mask |= 1 << index;
         }
 
-        table[index] = BitBoard::new(mask);
+        *bb = BitBoard::new(mask);
     }
 
     table
@@ -410,7 +410,7 @@ pub fn build_rook_masks() -> [BitBoard; 64] {
 pub fn build_bishop_blocks() -> [BitBoard; 64] {
     let mut table = [BitBoard::empty(); 64];
 
-    for index in 0usize..64 {
+    for (index, bb) in table.iter_mut().enumerate() {
         let square = Square::new(index as u8);
 
         let mut mask = 0u64;
@@ -435,7 +435,7 @@ pub fn build_bishop_blocks() -> [BitBoard; 64] {
             mask |= 1 << index;
         }
 
-        table[index] = BitBoard::new(mask);
+        *bb = BitBoard::new(mask);
     }
 
     table
@@ -444,7 +444,7 @@ pub fn build_bishop_blocks() -> [BitBoard; 64] {
 pub fn build_rook_blocks() -> [BitBoard; 64] {
     let mut table = [BitBoard::empty(); 64];
 
-    for index in 0usize..64 {
+    for (index, bb) in table.iter_mut().enumerate() {
         let square = Square::new(index as u8);
 
         let mut mask = 0u64;
@@ -469,7 +469,7 @@ pub fn build_rook_blocks() -> [BitBoard; 64] {
             mask |= 1 << index;
         }
 
-        table[index] = BitBoard::new(mask);
+        *bb = BitBoard::new(mask);
     }
 
     table
