@@ -1,3 +1,4 @@
+[![](https://img.shields.io/crates/v/giga-chess)](https://crates.io/crates/giga-chess)
 [![Rust](https://github.com/Zitronenjoghurt/giga-chess/actions/workflows/rust.yml/badge.svg)](https://github.com/Zitronenjoghurt/giga-chess/actions/workflows/rust.yml)
 [![codecov](https://codecov.io/gh/Zitronenjoghurt/giga-chess/graph/badge.svg?token=UM6T22YO17)](https://codecov.io/gh/Zitronenjoghurt/giga-chess)
 
@@ -8,9 +9,7 @@ A rust chess library built for performance, handling game logic and legal/best m
 ## Example
 
 ```rust
-use giga_chess::engine::Engine;
-use giga_chess::game::Game;
-use giga_chess::game::pgn_metadata::PGNMetadata;
+use giga_chess::prelude::*;
 
 fn main() {
     let engine = Engine::initialize();

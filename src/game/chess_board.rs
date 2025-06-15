@@ -37,6 +37,8 @@ const DEFAULT_BOARD: ChessBoard = ChessBoard([
 /// 10: Black Queens
 /// 11: Black Kings
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[cfg_attr(feature = "bincode", derive(bincode::Encode, bincode::Decode))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(transparent)]
 pub struct ChessBoard([BitBoard; 12]);
 

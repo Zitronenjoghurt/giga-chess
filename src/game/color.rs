@@ -3,6 +3,8 @@ use std::error::Error;
 pub const COLORS: [Color; 2] = [Color::White, Color::Black];
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[cfg_attr(feature = "bincode", derive(bincode::Encode, bincode::Decode))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Color {
     White = 0,
     Black = 1,

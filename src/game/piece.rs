@@ -11,6 +11,8 @@ pub const PIECES: [Piece; 6] = [
 ];
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[cfg_attr(feature = "bincode", derive(bincode::Encode, bincode::Decode))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Piece {
     Pawn = 0,
     Knight = 1,

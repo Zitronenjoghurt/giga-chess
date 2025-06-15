@@ -1,6 +1,8 @@
 use std::error::Error;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[cfg_attr(feature = "bincode", derive(bincode::Encode, bincode::Decode))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CastlingRights {
     pub white_king_side: bool,
     pub white_queen_side: bool,

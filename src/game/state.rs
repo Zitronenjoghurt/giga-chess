@@ -7,6 +7,8 @@ use crate::game::square::*;
 use std::error::Error;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
+#[cfg_attr(feature = "bincode", derive(bincode::Encode, bincode::Decode))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct GameState {
     pub board: ChessBoard,
     pub side_to_move: Color,

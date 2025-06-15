@@ -22,6 +22,8 @@ pub mod square;
 pub mod state;
 pub mod status;
 
+#[cfg_attr(feature = "bincode", derive(bincode::Encode, bincode::Decode))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Game {
     state: GameState,
     status: GameStatus,

@@ -4,6 +4,8 @@ use std::fmt::{Display, Formatter};
 
 // https://www.chessprogramming.org/Encoding_Moves
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "bincode", derive(bincode::Encode, bincode::Decode))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(transparent)]
 pub struct ChessMove(u16);
 

@@ -68,6 +68,8 @@ pub const H8: u8 = 63;
 
 /// A square on the chess board, indexing starts with 0 at A1, 1 at B1 and ends with 63 at H8.
 #[derive(Debug, Copy, Clone)]
+#[cfg_attr(feature = "bincode", derive(bincode::Encode, bincode::Decode))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(transparent)]
 pub struct Square(u8);
 

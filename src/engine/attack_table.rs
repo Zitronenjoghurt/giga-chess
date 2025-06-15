@@ -546,9 +546,9 @@ pub fn calculate_rook_attack(square: u8, occupancy: BitBoard) -> BitBoard {
 }
 
 pub fn build_occupancy_variations(block_mask: BitBoard) -> Vec<BitBoard> {
-    let occupancy_count = 1usize << block_mask.count_ones();
+    let occupancy_count = 1usize << block_mask.count_set_bits();
     (0..occupancy_count)
-        .map(|index| BitBoard::occupancy_variation(block_mask, index as u16))
+        .map(|index| block_mask.occupancy_variation(index as u16))
         .collect()
 }
 
