@@ -6,6 +6,7 @@ use crate::game::color::Color;
 use crate::game::pgn_metadata::PGNMetadata;
 use crate::game::state::GameState;
 use crate::game::status::GameStatus;
+use crate::prelude::{Piece, Square};
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::sync::Arc;
@@ -22,6 +23,7 @@ pub mod square;
 pub mod state;
 pub mod status;
 
+/// A chess game that encapsulates the overall game state as well as current legal moves, move history and PGN metadata.
 #[cfg_attr(feature = "bincode", derive(bincode::Encode, bincode::Decode))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Game {
@@ -77,6 +79,40 @@ impl Game {
         true
     }
 
+    pub fn is_move_playable(&self, chess_move: ChessMove) -> bool {
+        self.legal_moves.contains(&chess_move)
+    }
+
+    pub fn find_legal_move(
+        &self,
+        from: Square,
+        to: Square,
+        promotion: Option<Piece>,
+    ) -> Option<ChessMove> {
+        self.legal_moves
+            .iter()
+            .find(|chess_move| {
+                chess_move.get_from() == from.get_value()
+                    && chess_move.get_to() == to.get_value()
+                    && chess_move.get_type().promotion_piece() == promotion
+            })
+            .copied()
+    }
+
+    pub fn play_move_from_to(
+        &mut self,
+        engine: &Arc<Engine>,
+        from: Square,
+        to: Square,
+        promotion: Option<Piece>,
+    ) -> bool {
+        if let Some(chess_move) = self.find_legal_move(from, to, promotion) {
+            self.play_move(engine, chess_move)
+        } else {
+            false
+        }
+    }
+
     pub fn status(&self) -> GameStatus {
         self.status
     }
@@ -120,6 +156,17 @@ impl Game {
                 ))
             })
             .collect()
+    }
+
+    pub fn legal_move_squares(&self) -> HashMap<Square, Vec<Square>> {
+        self.legal_moves
+            .iter()
+            .fold(HashMap::new(), |mut acc, chess_move| {
+                let from = Square::new(chess_move.get_from());
+                let to = Square::new(chess_move.get_to());
+                acc.entry(from).or_default().push(to);
+                acc
+            })
     }
 
     pub fn board(&self) -> ChessBoard {
@@ -215,9 +262,9 @@ impl Game {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// The minimal information needed to recreate a game.
 pub struct ArchivedGame {
-    pgn: PGNMetadata,
-    origin_fen: Option<String>,
-    played_moves: Vec<ChessMove>,
+    pub pgn: PGNMetadata,
+    pub origin_fen: Option<String>,
+    pub played_moves: Vec<ChessMove>,
 }
 
 impl ArchivedGame {

@@ -1,3 +1,4 @@
+use crate::prelude::Color;
 use std::error::Error;
 use std::fmt::Display;
 
@@ -67,7 +68,7 @@ pub const G8: u8 = 62;
 pub const H8: u8 = 63;
 
 /// A square on the chess board, indexing starts with 0 at A1, 1 at B1 and ends with 63 at H8.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "bincode", derive(bincode::Encode, bincode::Decode))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(transparent)]
@@ -108,6 +109,15 @@ impl Square {
     #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn get_file(&self) -> u8 {
         (self.0 % 8) + 1
+    }
+
+    #[cfg_attr(tarpaulin, inline(never))]
+    #[cfg_attr(not(tarpaulin), inline(always))]
+    pub fn is_promotion_square(&self, color: Color) -> bool {
+        match color {
+            Color::White => self.is_upper_edge(),
+            Color::Black => self.is_lower_edge(),
+        }
     }
 
     #[cfg_attr(tarpaulin, inline(never))]
@@ -382,7 +392,7 @@ impl TryFrom<&str> for Square {
             return Err(format!("Invalid square '{value}'").into());
         }
 
-        let file_char = value.chars().nth(0).unwrap();
+        let file_char = value.chars().nth(0).unwrap().to_ascii_uppercase();
         let rank_char = value.chars().nth(1).unwrap();
 
         let file: u8 = match file_char {

@@ -11,6 +11,8 @@ use std::sync::Arc;
 pub mod attack_table;
 pub mod magic_numbers;
 
+/// The chess engine which has knowledge of the chess rules.\
+/// On initialization it generates all static data (like attack tables), so it's best to only initialize it only once (hence the Arc<>).
 pub struct Engine {
     pub attack_table: AttackTable,
 }
