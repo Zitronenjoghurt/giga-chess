@@ -1,3 +1,4 @@
+use rand::prelude::IndexedRandom;
 use std::error::Error;
 
 pub const COLORS: [Color; 2] = [Color::White, Color::Black];
@@ -11,6 +12,11 @@ pub enum Color {
 }
 
 impl Color {
+    pub fn random() -> Self {
+        let mut rng = rand::rng();
+        *COLORS.choose(&mut rng).unwrap_or(&Color::White)
+    }
+
     pub fn opposite(self) -> Color {
         match self {
             Color::White => Color::Black,
