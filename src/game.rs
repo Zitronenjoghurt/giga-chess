@@ -26,6 +26,7 @@ pub mod status;
 /// A chess game that encapsulates the overall game state as well as current legal moves, move history and PGN metadata.
 #[cfg_attr(feature = "bincode", derive(bincode::Encode, bincode::Decode))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Game {
     state: GameState,
     status: GameStatus,
