@@ -626,7 +626,7 @@ impl ChessBoard {
     ///     }
     /// }
     ///
-    /// assert_eq!(result, "♜♞♝♛♚♝♞♜\n♟♟♟♟♟♟♟♟\n■ □ ■ □ ■ □ ■ □ \n□ ■ □ ■ □ ■ □ ■ \n■ □ ■ □ ■ □ ■ □ \n□ ■ □ ■ □ ■ □ ■ \n♙♙♙♙♙♙♙♙\n♖♘♗♕♔♗♘♖");
+    /// assert_eq!(result, "♜♞♝♛♚♝♞♜\n♟♟♟♟♟♟♟♟\n□ ■ □ ■ □ ■ □ ■ \n■ □ ■ □ ■ □ ■ □ \n□ ■ □ ■ □ ■ □ ■ \n■ □ ■ □ ■ □ ■ □ \n♙♙♙♙♙♙♙♙\n♖♘♗♕♔♗♘♖");
     /// ```
     pub fn iter_top_bottom(&self, perspective: Color) -> ChessBoardIterator {
         match perspective {
