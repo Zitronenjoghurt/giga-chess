@@ -90,7 +90,7 @@ impl Square {
     #[cfg_attr(tarpaulin, inline(never))]
     #[cfg_attr(not(tarpaulin), inline(always))]
     pub fn is_white(&self) -> bool {
-        (self.get_file() + self.get_rank()) % 2 == 0
+        (self.get_file() + self.get_rank()) % 2 == 1
     }
 
     #[cfg_attr(tarpaulin, inline(never))]

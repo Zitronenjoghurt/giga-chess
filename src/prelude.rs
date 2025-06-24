@@ -6,6 +6,7 @@ pub use crate::game::{
     pgn_metadata::PGNMetadata,
     piece::{Piece, PIECES},
     square::*,
+    state::GameState,
     status::GameStatus,
     Game,
 };
