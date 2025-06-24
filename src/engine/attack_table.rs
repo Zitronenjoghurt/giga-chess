@@ -137,6 +137,7 @@ const ROOK_MAGICS: [u64; 64] = [
     0x18400034840101C2,
 ];
 
+#[derive(Debug)]
 pub struct AttackTable {
     pawn_masks: [[BitBoard; 64]; 2],
     pawn_attacks: [[BitBoard; 64]; 2],
@@ -148,6 +149,12 @@ pub struct AttackTable {
     rook_blocks: [BitBoard; 64],
     bishop_attacks: Vec<Vec<BitBoard>>,
     rook_attacks: Vec<Vec<BitBoard>>,
+}
+
+impl Default for AttackTable {
+    fn default() -> Self {
+        Self::build()
+    }
 }
 
 impl AttackTable {

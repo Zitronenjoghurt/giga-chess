@@ -1,7 +1,7 @@
 [package]
 name = "giga-chess"
 description = "A rust chess library built for performance, handling game logic and legal/best move generation."
-version = "0.8.2"
+version = "0.8.3"
 edition = "2024"
 license = "MIT"
 readme = "README.md"
