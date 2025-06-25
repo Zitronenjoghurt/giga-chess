@@ -113,6 +113,35 @@ impl Engine {
         false
     }
 
+    pub fn get_square_threats(
+        &self,
+        board: ChessBoard,
+        square: u8,
+        opponent_color: Color,
+    ) -> BitBoard {
+        let occupied = board.get_occupied_bb();
+
+        let pawn_attacks = self
+            .attack_table
+            .get_pawn_king_attack(square, opponent_color);
+        let knight_attacks = self.attack_table.get_knight_attacks(square);
+        let bishop_attacks = self.attack_table.get_bishop_attacks(square, occupied);
+        let rook_attacks = self.attack_table.get_rook_attacks(square, occupied);
+        let king_attacks = self.attack_table.get_king_attacks(square);
+
+        let pawn_threats = pawn_attacks & board.get_piece_bb(Piece::Pawn, opponent_color);
+        let knight_threats = knight_attacks & board.get_piece_bb(Piece::Knight, opponent_color);
+        let bishop_threats = bishop_attacks
+            & (board.get_piece_bb(Piece::Bishop, opponent_color)
+                | board.get_piece_bb(Piece::Queen, opponent_color));
+        let rook_threats = rook_attacks
+            & (board.get_piece_bb(Piece::Rook, opponent_color)
+                | board.get_piece_bb(Piece::Queen, opponent_color));
+        let king_threats = king_attacks & board.get_piece_bb(Piece::King, opponent_color);
+
+        pawn_threats | knight_threats | bishop_threats | rook_threats | king_threats
+    }
+
     pub fn is_promotion(&self, game_state: &GameState, move_to: u8) -> bool {
         game_state.side_to_move == Color::White && move_to > 55
             || game_state.side_to_move == Color::Black && move_to < 8

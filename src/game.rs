@@ -257,6 +257,32 @@ impl Game {
             played_moves: self.move_history.clone(),
         }
     }
+
+    pub fn get_piece_color_at(&self, square: Square) -> Option<(Piece, Color)> {
+        self.board().get_piece_at(square.get_value())
+    }
+
+    pub fn get_threats(&self, engine: &Arc<Engine>, square: Square) -> Vec<Square> {
+        let Some((_, color)) = self.get_piece_color_at(square) else {
+            return vec![];
+        };
+
+        let threat_board =
+            engine.get_square_threats(self.board(), square.get_value(), color.opposite());
+        threat_board.iter_set_bits().map(Square::new).collect()
+    }
+
+    pub fn get_check_threats(&self, engine: &Arc<Engine>) -> Vec<Square> {
+        let king_bb = self.board().get_piece_bb(Piece::King, self.side_to_move());
+        let Some(king_index) = king_bb.get_lowest_set_bit() else {
+            return vec![];
+        };
+        self.get_threats(engine, Square::new(king_index))
+    }
+
+    pub fn is_check(&self, engine: &Arc<Engine>) -> bool {
+        engine.is_in_check(self.board(), self.side_to_move())
+    }
 }
 
 #[cfg_attr(feature = "bincode", derive(bincode::Encode, bincode::Decode))]
