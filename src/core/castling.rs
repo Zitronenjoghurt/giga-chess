@@ -1,7 +1,9 @@
-use std::error::Error;
+use crate::core::square::*;
+use crate::error::{ChessError, ChessResult};
+use std::fmt::Display;
+use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-#[cfg_attr(feature = "bincode", derive(bincode::Encode, bincode::Decode))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Contains information on who is still allowed to castle and in which direction.
 pub struct CastlingRights {
@@ -11,19 +13,19 @@ pub struct CastlingRights {
     pub white_queen_side: bool,
     /// If black is allowed to castle king side.
     pub black_king_side: bool,
-    /// If black is allowed to castle queen side.   
+    /// If black is allowed to castle queen side.
     pub black_queen_side: bool,
 }
 
 impl CastlingRights {
     /// Create new [`CastlingRights`] where no castling is allowed.
     ///
-    /// returns: [`CastlingRights`]
+    /// Returns: [`CastlingRights`]
     ///
     /// # Examples
     ///
     /// ```
-    /// use giga_chess::game::castling_rights::CastlingRights;
+    /// use giga_chess::core::castling::CastlingRights;
     ///
     /// let rights = CastlingRights::none();
     ///
@@ -41,46 +43,16 @@ impl CastlingRights {
         }
     }
 
-    /// Formats available castling rights FEN-compliant.
-    ///
-    /// returns: String
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use giga_chess::game::castling_rights::CastlingRights;
-    ///
-    /// let rights1 = CastlingRights::default();
-    /// assert_eq!(rights1.get_fen_string(), "KQkq");
-    ///
-    /// let rights2 = CastlingRights::none();
-    /// assert_eq!(rights2.get_fen_string(), "-");
-    ///
-    /// let rights3 = CastlingRights {
-    ///     white_king_side: true,
-    ///     white_queen_side: false,
-    ///     black_king_side: false,
-    ///     black_queen_side: true,
-    /// };
-    /// assert_eq!(rights3.get_fen_string(), "Kq");
-    /// ```
-    pub fn get_fen_string(&self) -> String {
-        let mut fen = String::new();
+    pub fn update(&mut self, from: Square, to: Square) {
+        self.white_king_side &= from != E1;
+        self.white_queen_side &= from != E1;
+        self.black_king_side &= from != E8;
+        self.black_queen_side &= from != E8;
 
-        if self.white_king_side {
-            fen.push('K');
-        }
-        if self.white_queen_side {
-            fen.push('Q');
-        }
-        if self.black_king_side {
-            fen.push('k');
-        }
-        if self.black_queen_side {
-            fen.push('q');
-        }
-
-        if fen.is_empty() { "-".to_string() } else { fen }
+        self.white_king_side &= from != H1 && to != H1;
+        self.white_queen_side &= from != A1 && to != A1;
+        self.black_king_side &= from != H8 && to != H8;
+        self.black_queen_side &= from != A8 && to != A8;
     }
 }
 
@@ -95,25 +67,48 @@ impl Default for CastlingRights {
     }
 }
 
-impl TryFrom<&str> for CastlingRights {
-    type Error = Box<dyn Error>;
+impl FromStr for CastlingRights {
+    type Err = ChessError;
 
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        if value == "-" {
+    fn from_str(s: &str) -> ChessResult<Self> {
+        if s == "-" {
             return Ok(Self::none());
         }
 
         let mut rights = Self::default();
-        for c in value.chars() {
+        for c in s.chars() {
             match c {
                 'K' => rights.white_king_side = true,
                 'Q' => rights.white_queen_side = true,
                 'k' => rights.black_king_side = true,
                 'q' => rights.black_queen_side = true,
-                _ => return Err(format!("Invalid character '{}'", value).into()),
+                _ => return Err(ChessError::InvalidCastlingRights(s.to_string())),
             }
         }
 
         Ok(rights)
+    }
+}
+
+impl Display for CastlingRights {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut fen = String::new();
+        if self.white_king_side {
+            fen.push('K');
+        }
+        if self.white_queen_side {
+            fen.push('Q');
+        }
+        if self.black_king_side {
+            fen.push('k');
+        }
+        if self.black_queen_side {
+            fen.push('q');
+        }
+        if fen.is_empty() {
+            write!(f, "-")
+        } else {
+            write!(f, "{fen}")
+        }
     }
 }

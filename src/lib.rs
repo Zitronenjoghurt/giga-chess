@@ -1,5 +1,6 @@
-pub mod engine;
+pub mod core;
+pub mod error;
 pub mod game;
+pub mod moves;
+pub mod notation;
 pub mod prelude;
-pub mod types;
-mod utils;
