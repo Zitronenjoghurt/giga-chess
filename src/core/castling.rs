@@ -1,9 +1,10 @@
 use crate::core::square::*;
-use crate::error::{ChessError, ChessResult};
+use crate::error::{FenError, FenResult};
 use std::fmt::Display;
 use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Contains information on who is still allowed to castle and in which direction.
 pub struct CastlingRights {
@@ -68,9 +69,9 @@ impl Default for CastlingRights {
 }
 
 impl FromStr for CastlingRights {
-    type Err = ChessError;
+    type Err = FenError;
 
-    fn from_str(s: &str) -> ChessResult<Self> {
+    fn from_str(s: &str) -> FenResult<Self> {
         if s == "-" {
             return Ok(Self::none());
         }
@@ -82,7 +83,7 @@ impl FromStr for CastlingRights {
                 'Q' => rights.white_queen_side = true,
                 'k' => rights.black_king_side = true,
                 'q' => rights.black_queen_side = true,
-                _ => return Err(ChessError::InvalidCastlingRights(s.to_string())),
+                _ => return Err(FenError::InvalidCastlingRights(s.to_string())),
             }
         }
 

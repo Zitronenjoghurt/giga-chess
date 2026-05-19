@@ -1,9 +1,10 @@
 use crate::core::piece::Color;
-use crate::error::{ChessError, ChessResult};
+use crate::error::{FenError, FenResult};
 use std::fmt::Display;
 use std::str::FromStr;
 
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(transparent)]
 pub struct Square(u8);
@@ -14,7 +15,8 @@ impl Square {
         Self(index)
     }
 
-    /// # Safety: caller guarantees index < 64.
+    /// # Safety
+    /// Caller guarantees index < 64.
     pub const unsafe fn new_unchecked(index: u8) -> Self {
         Self(index)
     }
@@ -49,6 +51,17 @@ impl Square {
         match color {
             Color::White => self.is_upper_edge(),
             Color::Black => self.is_lower_edge(),
+        }
+    }
+
+    pub const fn is_any_promotion_square(&self) -> bool {
+        self.is_upper_edge() || self.is_lower_edge()
+    }
+
+    pub const fn is_pawn_start(&self, color: Color) -> bool {
+        match color {
+            Color::White => self.0 > 7 && self.0 < 16,
+            Color::Black => self.0 > 47 && self.0 < 56,
         }
     }
 
@@ -443,11 +456,11 @@ impl Display for Square {
 }
 
 impl FromStr for Square {
-    type Err = ChessError;
+    type Err = FenError;
 
-    fn from_str(s: &str) -> ChessResult<Self> {
+    fn from_str(s: &str) -> FenResult<Self> {
         if s.len() != 2 {
-            return Err(ChessError::InvalidSquare(s.to_string()));
+            return Err(FenError::InvalidSquare(s.to_string()));
         }
 
         let file_char = s.chars().nth(0).unwrap().to_ascii_uppercase();
@@ -463,7 +476,7 @@ impl FromStr for Square {
             'G' => 7,
             'H' => 8,
             _ => {
-                return Err(ChessError::InvalidSquare(
+                return Err(FenError::InvalidSquare(
                     format!("Invalid file '{file_char}'").into(),
                 ));
             }
@@ -479,7 +492,7 @@ impl FromStr for Square {
             '7' => 7,
             '8' => 8,
             _ => {
-                return Err(ChessError::InvalidSquare(
+                return Err(FenError::InvalidSquare(
                     format!("Invalid rank '{rank_char}'").into(),
                 ));
             }

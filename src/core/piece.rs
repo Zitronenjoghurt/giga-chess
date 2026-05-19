@@ -1,9 +1,10 @@
 use crate::core::square::*;
-use crate::error::{ChessError, ChessResult};
+use crate::error::{FenError, FenResult};
 use std::fmt::Display;
 use std::str::FromStr;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Piece {
     Pawn = 0,
@@ -67,9 +68,9 @@ impl Piece {
 }
 
 impl FromStr for Piece {
-    type Err = ChessError;
+    type Err = FenError;
 
-    fn from_str(s: &str) -> ChessResult<Self> {
+    fn from_str(s: &str) -> FenResult<Self> {
         match s {
             "P" | "p" | "♙" | "♟" => Ok(Self::Pawn),
             "N" | "n" | "♘" | "♞" => Ok(Self::Knight),
@@ -77,7 +78,7 @@ impl FromStr for Piece {
             "R" | "r" | "♖" | "♜" => Ok(Self::Rook),
             "Q" | "q" | "♕" | "♛" => Ok(Self::Queen),
             "K" | "k" | "♔" | "♚" => Ok(Self::King),
-            _ => Err(ChessError::InvalidPiece(s.to_string())),
+            _ => Err(FenError::InvalidPiece(s.to_string())),
         }
     }
 }
@@ -88,7 +89,8 @@ impl Display for Piece {
     }
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Color {
     White = 0,
@@ -128,13 +130,13 @@ impl Color {
 }
 
 impl FromStr for Color {
-    type Err = ChessError;
+    type Err = FenError;
 
-    fn from_str(s: &str) -> ChessResult<Self> {
+    fn from_str(s: &str) -> FenResult<Self> {
         match s {
             "W" | "w" => Ok(Color::White),
             "B" | "b" => Ok(Color::Black),
-            _ => Err(ChessError::InvalidColor(s.to_string())),
+            _ => Err(FenError::InvalidColor(s.to_string())),
         }
     }
 }

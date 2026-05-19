@@ -1,7 +1,7 @@
 use crate::core::bitboard::BitBoard;
 use crate::core::piece::{Color, Piece};
 use crate::core::square::Square;
-use crate::error::{ChessError, ChessResult};
+use crate::error::{FenError, FenResult};
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
@@ -26,6 +26,7 @@ type ChessBoardIterator<'a> = Box<dyn Iterator<Item = (Square, Option<(Piece, Co
 ///
 /// Square indexing starts with 0 at A1, 1 at B1, ... and ends with 63 at H8.
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(transparent)]
 pub struct ChessBoard([BitBoard; 12]);
@@ -388,35 +389,37 @@ impl ChessBoard {
         }
     }
 
-    // ToDo: Return string
-    //pub fn as_grid(&self) -> String {
-    //    for (square, piece_color) in self.iter_top_bottom(Color::White) {
-    //        if square.is_left_edge() {
-    //            write!(f, "{} ", square.get_rank())?;
-    //        }
-    //
-    //        if let Some((piece, color)) = piece_color {
-    //            write!(f, "{} ", piece.icon(color))?;
-    //        } else if square.is_white() {
-    //            write!(f, "□ ")?;
-    //        } else {
-    //            write!(f, "■ ")?;
-    //        }
-    //
-    //        if square.is_right_edge() {
-    //            writeln!(f)?;
-    //        }
-    //    }
-    //
-    //    writeln!(f, "  A B C D E F G H")?;
-    //    Ok(())
-    //}
+    pub fn as_grid(&self) -> String {
+        let mut grid = String::new();
+
+        for (square, piece_color) in self.iter_top_bottom(Color::White) {
+            if square.is_left_edge() {
+                grid.push_str(format!("{} ", square.get_rank()).as_str());
+            }
+
+            if let Some((piece, color)) = piece_color {
+                grid.push_str(format!("{} ", piece.icon(color)).as_str());
+            } else if square.is_white() {
+                grid.push_str("□ ");
+            } else {
+                grid.push_str("■ ");
+            }
+
+            if square.is_right_edge() {
+                grid.push('\n');
+            }
+        }
+
+        grid.push_str("  A B C D E F G H");
+
+        grid
+    }
 }
 
 impl FromStr for ChessBoard {
-    type Err = ChessError;
+    type Err = FenError;
 
-    fn from_str(s: &str) -> ChessResult<Self> {
+    fn from_str(s: &str) -> FenResult<Self> {
         let mut board = Self::empty();
 
         let mut rank = 8;
@@ -429,7 +432,7 @@ impl FromStr for ChessBoard {
             }
 
             if file > 8 {
-                return Err(ChessError::InvalidChessBoard(format!(
+                return Err(FenError::InvalidChessBoard(format!(
                     "File exceeds H in rank {rank}"
                 )));
             }
@@ -445,13 +448,13 @@ impl FromStr for ChessBoard {
                 file += 1;
             } else if let Some(count) = current_char.to_digit(10) {
                 if count > 8 || file + count as u8 > 9 {
-                    return Err(ChessError::InvalidChessBoard(format!(
+                    return Err(FenError::InvalidChessBoard(format!(
                         "Count exceeds 8 in rank {rank}"
                     )));
                 }
                 file += count as u8;
             } else {
-                return Err(ChessError::InvalidChessBoard(format!(
+                return Err(FenError::InvalidChessBoard(format!(
                     "Invalid character '{current_char}' in rank {rank}"
                 )));
             }

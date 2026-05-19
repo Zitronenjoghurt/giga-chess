@@ -1,9 +1,10 @@
-use crate::error::{ChessError, ChessResult};
+use crate::error::{FenError, FenResult};
 use crate::prelude::*;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Position {
     pub board: ChessBoard,
@@ -17,7 +18,6 @@ pub struct Position {
     pub half_moves: u8,
     /// Full-move counter, incremented after black's move
     pub full_moves: u16,
-    // ToDo: Threefold repetition
 }
 
 impl Default for Position {
@@ -133,25 +133,25 @@ impl Display for Position {
 }
 
 impl FromStr for Position {
-    type Err = ChessError;
+    type Err = FenError;
 
-    fn from_str(s: &str) -> ChessResult<Self> {
+    fn from_str(s: &str) -> FenResult<Self> {
         let parts: Vec<&str> = s.split(' ').collect();
         if parts.len() != 6 {
-            return Err(ChessError::InvalidPosition(
+            return Err(FenError::InvalidPosition(
                 "Must have 6 whitespace-separated parts".into(),
             ));
         }
 
         let board = ChessBoard::from_str(parts[0]).map_err(|err| {
-            ChessError::InvalidPosition(format!("Invalid board representation: {}", err))
+            FenError::InvalidPosition(format!("Invalid board representation: {}", err))
         })?;
 
         let side_to_move = Color::from_str(parts[1])
-            .map_err(|err| ChessError::InvalidPosition(format!("Invalid side to move: {}", err)))?;
+            .map_err(|err| FenError::InvalidPosition(format!("Invalid side to move: {}", err)))?;
 
         let castling_rights = CastlingRights::from_str(parts[2]).map_err(|err| {
-            ChessError::InvalidPosition(format!("Invalid castling rights: {}", err))
+            FenError::InvalidPosition(format!("Invalid castling rights: {}", err))
         })?;
 
         let en_passant_square = Some(parts[3])
@@ -159,15 +159,15 @@ impl FromStr for Position {
             .map(Square::from_str)
             .transpose()
             .map_err(|err| {
-                ChessError::InvalidPosition(format!("Invalid en passant square: {}", err))
+                FenError::InvalidPosition(format!("Invalid en passant square: {}", err))
             })?;
 
         let half_moves = parts[4].parse::<u8>().map_err(|err| {
-            ChessError::InvalidPosition(format!("Invalid half-move count: {}", err))
+            FenError::InvalidPosition(format!("Invalid half-move count: {}", err))
         })?;
 
         let full_moves = parts[5].parse::<u16>().map_err(|err| {
-            ChessError::InvalidPosition(format!("Invalid full-move count: {}", err))
+            FenError::InvalidPosition(format!("Invalid full-move count: {}", err))
         })?;
 
         Ok(Self {
