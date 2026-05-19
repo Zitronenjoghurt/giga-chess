@@ -1,11 +1,13 @@
 use crate::core::position::Position;
 use crate::error::{ChessError, ChessResult};
+use crate::game::mode::GameMode;
 use crate::game::outcome::{DecisiveReason, DrawReason, GameOutcome};
 use crate::game::state::GameState;
 use crate::moves::generator::MoveGenerator;
 use crate::moves::list::MoveList;
 use crate::prelude::{ChessMove, Color, Piece, Square};
 
+pub mod mode;
 pub mod outcome;
 pub mod state;
 
@@ -14,6 +16,7 @@ pub mod state;
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Game {
+    mode: GameMode,
     pos: Position,
     legal_moves: MoveList,
     history: Vec<ChessMove>,
@@ -35,11 +38,27 @@ impl Game {
     pub fn from_position(pos: Position) -> Self {
         let legal_moves = MoveGenerator::get().generate(&pos);
         Self {
+            mode: GameMode::Standard,
             pos,
             legal_moves,
             history: vec![],
             outcome: None,
         }
+    }
+
+    pub fn from_moves(moves: &[ChessMove]) -> ChessResult<Self> {
+        let mut game = Self::default();
+        for (i, mv) in moves.iter().enumerate() {
+            if let Err(err) = game.play_move(*mv) {
+                return Err(ChessError::IllegalMoveSequence(i));
+            }
+        }
+        Ok(game)
+    }
+
+    pub fn with_mode(mut self, mode: GameMode) -> Self {
+        self.mode = mode;
+        self
     }
 
     pub fn play_move(&mut self, mv: ChessMove) -> ChessResult<()> {
@@ -70,19 +89,12 @@ impl Game {
         Ok(())
     }
 
-    pub fn play_move_from_to(
-        &mut self,
+    pub fn find_move(
+        &self,
         from: Square,
         to: Square,
         promotion: Option<Piece>,
-    ) -> ChessResult<()> {
-        let mv = self
-            .find_move(from, to, promotion)
-            .ok_or(ChessError::IllegalMove)?;
-        self.play_move(mv)
-    }
-
-    fn find_move(&self, from: Square, to: Square, promotion: Option<Piece>) -> Option<ChessMove> {
+    ) -> Option<ChessMove> {
         self.legal_moves
             .iter()
             .find(|mv| {
@@ -95,6 +107,13 @@ impl Game {
         self.outcome = Some(GameOutcome::Decisive {
             winner: color.opposite(),
             reason: DecisiveReason::Resignation,
+        });
+    }
+
+    pub fn timeout(&mut self, color: Color) {
+        self.outcome = Some(GameOutcome::Decisive {
+            winner: color.opposite(),
+            reason: DecisiveReason::Timeout,
         });
     }
 
@@ -118,6 +137,10 @@ impl Game {
 
     pub fn is_over(&self) -> bool {
         self.outcome.is_some()
+    }
+
+    pub fn force_outcome(&mut self, outcome: GameOutcome) {
+        self.outcome = Some(outcome);
     }
 }
 

@@ -89,6 +89,18 @@ impl MoveFlags {
             _ => None,
         }
     }
+
+    pub fn is_kingside_castle(&self) -> bool {
+        matches!(self, Self::KingCastle)
+    }
+
+    pub fn is_queenside_castle(&self) -> bool {
+        matches!(self, Self::QueenCastle)
+    }
+
+    pub fn is_en_passant(&self) -> bool {
+        matches!(self, Self::EnPassant)
+    }
 }
 
 impl From<u8> for MoveFlags {

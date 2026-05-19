@@ -394,7 +394,7 @@ impl ChessBoard {
 
         for (square, piece_color) in self.iter_top_bottom(Color::White) {
             if square.is_left_edge() {
-                grid.push_str(format!("{} ", square.get_rank()).as_str());
+                grid.push_str(format!("{} ", square.rank()).as_str());
             }
 
             if let Some((piece, color)) = piece_color {

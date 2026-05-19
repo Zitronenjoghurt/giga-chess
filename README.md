@@ -1,5 +1,5 @@
 [![](https://img.shields.io/crates/v/giga-chess)](https://crates.io/crates/giga-chess)
-[![Tests](https://github.com/Zitronenjoghurt/giga-chess/actions/workflows/rust.yml/badge.svg)](https://github.com/Zitronenjoghurt/giga-chess/actions/workflows/rust.yml)
+[![Tests](https://github.com/Zitronenjoghurt/giga-chess/actions/workflows/tests.yml/badge.svg)](https://github.com/Zitronenjoghurt/giga-chess/actions/workflows/tests.yml)
 [![codecov](https://codecov.io/gh/Zitronenjoghurt/giga-chess/graph/badge.svg?token=UM6T22YO17)](https://codecov.io/gh/Zitronenjoghurt/giga-chess)
 ![](http://tokei.lemon.industries/b1/github/Zitronenjoghurt/giga-chess?category=code&type=Rust&logo=https://simpleicons.org/icons/rust.svg)
 

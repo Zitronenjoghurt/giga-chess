@@ -27,6 +27,7 @@ pub enum DecisiveReason {
 pub enum DrawReason {
     Stalemate,
     Agreement,
+    Timeout,
     FiftyMoveRule,
     SeventyFiveMoveRule,
     ThreefoldRepetition,

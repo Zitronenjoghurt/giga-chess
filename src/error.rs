@@ -20,6 +20,8 @@ pub type ChessResult<T> = Result<T, ChessError>;
 pub enum ChessError {
     #[error("Illegal move")]
     IllegalMove,
+    #[error("Illegal move in sequence at index {0}")]
+    IllegalMoveSequence(usize),
     #[error("There is no draw to claim")]
     NoDrawClaimable,
 }
@@ -33,6 +35,8 @@ pub enum SessionError {
     DrawAlreadyOffered,
     #[error("Game is already over")]
     GameOver,
+    #[error("Invalid FEN: {0}")]
+    InvalidFen(#[from] FenError),
     #[error("There is no draw offer to accept or decline")]
     NoDrawOffer,
     #[error("Color is not to move")]

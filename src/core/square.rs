@@ -34,16 +34,16 @@ impl Square {
     }
 
     pub const fn is_white(&self) -> bool {
-        (self.get_file() + self.get_rank()) % 2 == 1
+        (self.file() + self.rank()) % 2 == 1
     }
 
     // ToDo: 0-based?
-    pub const fn get_rank(&self) -> u8 {
+    pub const fn rank(&self) -> u8 {
         (self.0 / 8) + 1
     }
 
     // ToDo: 0-based?
-    pub const fn get_file(&self) -> u8 {
+    pub const fn file(&self) -> u8 {
         (self.0 % 8) + 1
     }
 
@@ -178,8 +178,8 @@ impl Square {
     }
 
     pub fn jump(&self, file: i8, rank: i8) -> Option<Square> {
-        let current_file = self.get_file();
-        let current_rank = self.get_rank();
+        let current_file = self.file();
+        let current_rank = self.rank();
         let new_file = current_file as i8 + file;
         let new_rank = current_rank as i8 + rank;
         if !(1..=8).contains(&new_file) || !(1..=8).contains(&new_rank) {
@@ -235,18 +235,12 @@ impl Square {
         0..64
     }
 
-    pub const fn get_file_char(&self) -> char {
-        match self.get_file() {
-            1 => 'A',
-            2 => 'B',
-            3 => 'C',
-            4 => 'D',
-            5 => 'E',
-            6 => 'F',
-            7 => 'G',
-            8 => 'H',
-            _ => '?',
-        }
+    pub const fn file_char(&self) -> char {
+        (b'a' + self.file() - 1) as char
+    }
+
+    pub const fn rank_char(&self) -> char {
+        (b'0' + self.rank()) as char
     }
 
     pub const A1: Self = Self(0);
@@ -382,76 +376,7 @@ pub const H8: Square = Square::H8;
 
 impl Display for Square {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let file = self.get_file();
-        let rank = self.get_rank();
-        let str = match (file, rank) {
-            (1, 1) => "A1".to_string(),
-            (1, 2) => "A2".to_string(),
-            (1, 3) => "A3".to_string(),
-            (1, 4) => "A4".to_string(),
-            (1, 5) => "A5".to_string(),
-            (1, 6) => "A6".to_string(),
-            (1, 7) => "A7".to_string(),
-            (1, 8) => "A8".to_string(),
-            (2, 1) => "B1".to_string(),
-            (2, 2) => "B2".to_string(),
-            (2, 3) => "B3".to_string(),
-            (2, 4) => "B4".to_string(),
-            (2, 5) => "B5".to_string(),
-            (2, 6) => "B6".to_string(),
-            (2, 7) => "B7".to_string(),
-            (2, 8) => "B8".to_string(),
-            (3, 1) => "C1".to_string(),
-            (3, 2) => "C2".to_string(),
-            (3, 3) => "C3".to_string(),
-            (3, 4) => "C4".to_string(),
-            (3, 5) => "C5".to_string(),
-            (3, 6) => "C6".to_string(),
-            (3, 7) => "C7".to_string(),
-            (3, 8) => "C8".to_string(),
-            (4, 1) => "D1".to_string(),
-            (4, 2) => "D2".to_string(),
-            (4, 3) => "D3".to_string(),
-            (4, 4) => "D4".to_string(),
-            (4, 5) => "D5".to_string(),
-            (4, 6) => "D6".to_string(),
-            (4, 7) => "D7".to_string(),
-            (4, 8) => "D8".to_string(),
-            (5, 1) => "E1".to_string(),
-            (5, 2) => "E2".to_string(),
-            (5, 3) => "E3".to_string(),
-            (5, 4) => "E4".to_string(),
-            (5, 5) => "E5".to_string(),
-            (5, 6) => "E6".to_string(),
-            (5, 7) => "E7".to_string(),
-            (5, 8) => "E8".to_string(),
-            (6, 1) => "F1".to_string(),
-            (6, 2) => "F2".to_string(),
-            (6, 3) => "F3".to_string(),
-            (6, 4) => "F4".to_string(),
-            (6, 5) => "F5".to_string(),
-            (6, 6) => "F6".to_string(),
-            (6, 7) => "F7".to_string(),
-            (6, 8) => "F8".to_string(),
-            (7, 1) => "G1".to_string(),
-            (7, 2) => "G2".to_string(),
-            (7, 3) => "G3".to_string(),
-            (7, 4) => "G4".to_string(),
-            (7, 5) => "G5".to_string(),
-            (7, 6) => "G6".to_string(),
-            (7, 7) => "G7".to_string(),
-            (7, 8) => "G8".to_string(),
-            (8, 1) => "H1".to_string(),
-            (8, 2) => "H2".to_string(),
-            (8, 3) => "H3".to_string(),
-            (8, 4) => "H4".to_string(),
-            (8, 5) => "H5".to_string(),
-            (8, 6) => "H6".to_string(),
-            (8, 7) => "H7".to_string(),
-            (8, 8) => "H8".to_string(),
-            _ => unreachable!(),
-        };
-        write!(f, "{}", str)
+        write!(f, "{}{}", self.file_char(), self.rank_char())
     }
 }
 

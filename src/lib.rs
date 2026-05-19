@@ -6,4 +6,4 @@ pub mod game;
 pub mod moves;
 pub mod notation;
 pub mod prelude;
-mod session;
+pub mod session;
