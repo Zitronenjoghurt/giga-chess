@@ -111,6 +111,20 @@ impl Game {
             .copied()
     }
 
+    pub fn play(&mut self, from: Square, to: Square) -> ChessResult<()> {
+        let mv = self
+            .find_move(from, to, None)
+            .ok_or(ChessError::IllegalMove)?;
+        self.play_move(mv)
+    }
+
+    pub fn play_promotion(&mut self, from: Square, to: Square, piece: Piece) -> ChessResult<()> {
+        let mv = self
+            .find_move(from, to, Some(piece))
+            .ok_or(ChessError::IllegalMove)?;
+        self.play_move(mv)
+    }
+
     pub fn resign(&mut self, color: Color) {
         self.outcome = Some(GameOutcome::Decisive {
             winner: color.opposite(),
@@ -209,6 +223,10 @@ impl Game {
 
     pub fn is_over(&self) -> bool {
         self.outcome.is_some()
+    }
+
+    pub fn pretty_grid(&self) -> String {
+        self.pos.pretty_grid()
     }
 }
 

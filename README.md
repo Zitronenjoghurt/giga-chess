@@ -9,19 +9,37 @@ A rust chess library built for performance, handling game logic and legal/best m
 
 ## Example
 
+### Fools Mate
+
+```text
+8 ♜ ♞ ♝ ■ ♚ ♝ ♞ ♜
+7 ♟ ♟ ♟ ♟ ■ ♟ ♟ ♟
+6 □ ■ □ ■ ♟ ■ □ ■
+5 ■ □ ■ □ ■ □ ■ □
+4 □ ■ □ ■ □ ■ ♙ ♛
+3 ■ □ ■ □ ■ ♙ ■ □
+2 ♙ ♙ ♙ ♙ ♙ ■ □ ♙
+1 ♖ ♘ ♗ ♕ ♔ ♗ ♘ ♖
+  A B C D E F G H
+```
+
 ```rust
-use giga_chess::prelude::*;
+pub use giga_chess::prelude::*;
 
 fn main() {
-    let engine = Engine::initialize();
+    let mut game = Game::default();
+    game.play(F2, F3).unwrap();
+    game.play(E7, E6).unwrap();
+    game.play(G2, G4).unwrap();
+    game.play(D8, H4).unwrap();
+    println!("{}", game.pretty_grid());
 
-    let mut game = Game::new(&engine, PGNMetadata::now());
-    let moves = game.legal_moves();
-
-    // Choose some kind of move
-    let chosen_move = *moves.iter().nth(0).unwrap();
-    game.play_move(&engine, chosen_move);
-
-    println!("{}", game.board().to_string());
+    assert_eq!(
+        game.outcome(),
+        Some(GameOutcome::Decisive {
+            winner: Color::Black,
+            reason: DecisiveReason::Checkmate
+        })
+    );
 }
 ```

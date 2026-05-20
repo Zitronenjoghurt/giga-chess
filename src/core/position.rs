@@ -147,6 +147,10 @@ impl Position {
         self.hash = hash;
         self
     }
+
+    pub fn pretty_grid(&self) -> String {
+        self.board.pretty_grid()
+    }
 }
 
 impl Display for Position {

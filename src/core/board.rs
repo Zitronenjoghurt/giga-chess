@@ -405,7 +405,7 @@ impl ChessBoard {
         }
     }
 
-    pub fn as_grid(&self) -> String {
+    pub fn pretty_grid(&self) -> String {
         let mut grid = String::new();
 
         for (square, piece_color) in self.iter_top_bottom(Color::White) {

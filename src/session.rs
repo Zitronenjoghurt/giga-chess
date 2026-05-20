@@ -179,6 +179,10 @@ impl Session {
     pub fn pgn(&self) -> String {
         crate::notation::pgn::session_pgn(self)
     }
+
+    pub fn turn(&self) -> Color {
+        self.game.position().side_to_move
+    }
 }
 
 #[derive(Debug, Clone)]
