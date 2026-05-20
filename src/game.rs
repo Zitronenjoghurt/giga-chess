@@ -1,90 +1,103 @@
-use crate::engine::Engine;
-use crate::game::algebraic_notation::parse_move_to_algebraic_notation;
-use crate::game::chess_board::ChessBoard;
-use crate::game::chess_move::ChessMove;
-use crate::game::color::Color;
-use crate::game::pgn_metadata::PGNMetadata;
+use crate::core::position::Position;
+use crate::error::{ChessError, ChessResult};
+use crate::game::mode::GameMode;
+use crate::game::outcome::{DecisiveReason, DrawReason, GameOutcome};
 use crate::game::state::GameState;
-use crate::game::status::GameStatus;
-use crate::prelude::{Piece, Square};
-use std::collections::{HashMap, HashSet};
-use std::error::Error;
-use std::sync::Arc;
+use crate::moves::generator::MoveGenerator;
+use crate::moves::list::MoveList;
+use crate::prelude::{ChessMove, Color, Piece, Square};
 
-pub mod algebraic_notation;
-pub mod bit_board;
-pub mod castling_rights;
-pub mod chess_board;
-pub mod chess_move;
-pub mod color;
-pub mod pgn_metadata;
-pub mod piece;
-pub mod square;
+pub mod mode;
+pub mod outcome;
 pub mod state;
-pub mod status;
 
-/// A chess game that encapsulates the overall game state as well as current legal moves, move history and PGN metadata.
-#[cfg_attr(feature = "bincode", derive(bincode::Encode, bincode::Decode))]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+/// A chess game that encapsulates the overall game state as well as current legal moves, move history and outcome.
 #[derive(Debug, Clone, Eq, PartialEq)]
+#[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Game {
-    state: GameState,
-    status: GameStatus,
-    legal_moves: HashSet<ChessMove>,
-    move_history: Vec<ChessMove>,
-    algebraic_history: Vec<String>,
-    pgn_metadata: PGNMetadata,
-    origin_fen: Option<String>,
+    mode: GameMode,
+    pos: Position,
+    legal_moves: MoveList,
+    history: Vec<ChessMove>,
+    hash_history: Vec<u64>,
+    outcome: Option<GameOutcome>,
+}
+
+impl Default for Game {
+    fn default() -> Self {
+        Self::from_position(Position::default())
+    }
 }
 
 impl Game {
-    pub fn new(engine: &Arc<Engine>, pgn_metadata: PGNMetadata) -> Self {
-        let state = GameState::default();
-        let (legal_moves, status) = engine.generate_moves(&state);
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn from_position(pos: Position) -> Self {
+        let legal_moves = MoveGenerator::get().generate(&pos);
         Self {
-            state,
-            status,
-            legal_moves: legal_moves.iter().copied().collect(),
-            move_history: Vec::new(),
-            algebraic_history: Vec::new(),
-            pgn_metadata,
-            origin_fen: None,
+            mode: GameMode::Standard,
+            pos,
+            legal_moves,
+            history: vec![],
+            hash_history: vec![pos.hash],
+            outcome: None,
         }
     }
 
-    pub fn play_move(&mut self, engine: &Arc<Engine>, chess_move: ChessMove) -> bool {
-        if !self.legal_moves.contains(&chess_move) {
-            return false;
-        }
-
-        if self.origin_fen.is_none() {
-            if let Some(algebraic) = parse_move_to_algebraic_notation(
-                engine,
-                &self.state,
-                &chess_move,
-                self.state.side_to_move,
-            ) {
-                self.algebraic_history.push(algebraic);
-            } else {
-                self.algebraic_history.push("".to_string());
+    pub fn from_moves(moves: &[ChessMove]) -> ChessResult<Self> {
+        let mut game = Self::default();
+        for (i, mv) in moves.iter().enumerate() {
+            if game.play_move(*mv).is_err() {
+                return Err(ChessError::IllegalMoveSequence(i));
             }
-            self.move_history.push(chess_move);
+        }
+        Ok(game)
+    }
+
+    pub fn with_mode(mut self, mode: GameMode) -> Self {
+        self.mode = mode;
+        self
+    }
+
+    pub fn play_move(&mut self, mv: ChessMove) -> ChessResult<()> {
+        if !self.legal_moves.contains(mv) {
+            return Err(ChessError::IllegalMove);
         }
 
-        self.state.play_move(chess_move);
+        self.pos = self.pos.make_move(mv);
+        self.history.push(mv);
+        self.hash_history.push(self.pos.hash);
+        self.legal_moves = MoveGenerator::get().generate(&self.pos);
 
-        let (legal_moves, status) = engine.generate_moves(&self.state);
-        self.legal_moves = legal_moves.iter().copied().collect();
-        self.status = status;
+        match self.state() {
+            GameState::Checkmate => {
+                self.outcome = Some(GameOutcome::Decisive {
+                    winner: self.pos.side_to_move.opposite(),
+                    reason: DecisiveReason::Checkmate,
+                })
+            }
+            GameState::Stalemate => {
+                self.outcome = Some(GameOutcome::Draw(DrawReason::Stalemate));
+            }
+            GameState::DrawSeventyFive => {
+                self.outcome = Some(GameOutcome::Draw(DrawReason::SeventyFiveMoveRule));
+            }
+            GameState::DrawFivefold => {
+                self.outcome = Some(GameOutcome::Draw(DrawReason::FivefoldRepetition));
+            }
+            GameState::DrawInsufficientMaterial => {
+                self.outcome = Some(GameOutcome::Draw(DrawReason::InsufficientMaterial));
+            }
+            _ => {}
+        }
 
-        true
+        Ok(())
     }
 
-    pub fn is_move_playable(&self, chess_move: ChessMove) -> bool {
-        self.legal_moves.contains(&chess_move)
-    }
-
-    pub fn find_legal_move(
+    pub fn find_move(
         &self,
         from: Square,
         to: Square,
@@ -92,234 +105,424 @@ impl Game {
     ) -> Option<ChessMove> {
         self.legal_moves
             .iter()
-            .find(|chess_move| {
-                chess_move.get_from() == from.get_value()
-                    && chess_move.get_to() == to.get_value()
-                    && chess_move.get_type().promotion_piece() == promotion
+            .find(|mv| {
+                mv.from() == from && mv.to() == to && mv.flags().promotion_piece() == promotion
             })
             .copied()
     }
 
-    pub fn play_move_from_to(
-        &mut self,
-        engine: &Arc<Engine>,
-        from: Square,
-        to: Square,
-        promotion: Option<Piece>,
-    ) -> bool {
-        if let Some(chess_move) = self.find_legal_move(from, to, promotion) {
-            self.play_move(engine, chess_move)
+    pub fn resign(&mut self, color: Color) {
+        self.outcome = Some(GameOutcome::Decisive {
+            winner: color.opposite(),
+            reason: DecisiveReason::Resignation,
+        });
+    }
+
+    pub fn timeout(&mut self, color: Color) {
+        if !self.pos.board.has_sufficient_material(color.opposite()) {
+            self.outcome = Some(GameOutcome::Draw(DrawReason::TimeoutVsInsufficient));
         } else {
-            false
+            self.outcome = Some(GameOutcome::Decisive {
+                winner: color.opposite(),
+                reason: DecisiveReason::Timeout,
+            });
         }
     }
 
-    pub fn status(&self) -> GameStatus {
-        self.status
-    }
-
-    pub fn winner(&self) -> Option<Color> {
-        if self.status == GameStatus::Checkmate {
-            Some(self.state.side_to_move.opposite())
-        } else {
-            None
+    pub fn claim_draw(&mut self) -> Result<(), ChessError> {
+        match self.state() {
+            GameState::DrawFiftyMoveClaimable => {
+                self.outcome = Some(GameOutcome::Draw(DrawReason::FiftyMoveRule));
+                Ok(())
+            }
+            GameState::DrawRepetitionClaimable => {
+                self.outcome = Some(GameOutcome::Draw(DrawReason::ThreefoldRepetition));
+                Ok(())
+            }
+            _ => Err(ChessError::NoDrawClaimable),
         }
     }
 
-    pub fn side_to_move(&self) -> Color {
-        self.state.side_to_move
+    pub fn agree_draw(&mut self) {
+        self.outcome = Some(GameOutcome::Draw(DrawReason::Agreement));
     }
 
-    pub fn half_moves(&self) -> u8 {
-        self.state.half_moves
+    pub fn force_outcome(&mut self, outcome: GameOutcome) {
+        self.outcome = Some(outcome);
+    }
+}
+
+// Accessors
+impl Game {
+    pub fn position(&self) -> &Position {
+        &self.pos
     }
 
-    pub fn full_moves(&self) -> u16 {
-        self.state.full_moves
-    }
-
-    pub fn legal_moves(&self) -> &HashSet<ChessMove> {
+    pub fn legal_moves(&self) -> &MoveList {
         &self.legal_moves
     }
 
-    pub fn legal_moves_algebraic(&self, engine: &Arc<Engine>) -> HashMap<String, ChessMove> {
-        self.legal_moves
-            .iter()
-            .filter_map(|chess_move| {
-                Some((
-                    parse_move_to_algebraic_notation(
-                        engine,
-                        &self.state,
-                        chess_move,
-                        self.state.side_to_move,
-                    )?,
-                    *chess_move,
-                ))
-            })
-            .collect()
+    pub fn history(&self) -> &[ChessMove] {
+        &self.history
     }
 
-    pub fn legal_move_squares(&self) -> HashMap<Square, Vec<Square>> {
-        self.legal_moves
-            .iter()
-            .fold(HashMap::new(), |mut acc, chess_move| {
-                let from = Square::new(chess_move.get_from());
-                let to = Square::new(chess_move.get_to());
-                acc.entry(from).or_default().push(to);
-                acc
-            })
-    }
-
-    pub fn board(&self) -> ChessBoard {
-        self.state.board
-    }
-
-    pub fn move_history(&self) -> &Vec<ChessMove> {
-        &self.move_history
-    }
-
-    pub fn latest_move(&self) -> Option<ChessMove> {
-        self.move_history.last().copied()
-    }
-
-    pub fn latest_move_algebraic(&self) -> Option<String> {
-        Some(self.algebraic_history.last()?.to_string())
-    }
-
-    pub fn algebraic_history(&self) -> &Vec<String> {
-        &self.algebraic_history
-    }
-
-    pub fn get_result_pgn(&self) -> Option<&str> {
-        if let Some(winner) = self.winner() {
-            match winner {
-                Color::White => Some("1-0"),
-                Color::Black => Some("0-1"),
+    pub fn state(&self) -> GameState {
+        if self.pos.half_moves >= 150 {
+            GameState::DrawSeventyFive
+        } else if self.repetition_count() >= 5 {
+            GameState::DrawFivefold
+        } else if self.legal_moves.is_empty() {
+            if MoveGenerator::get().is_in_check(&self.pos, self.pos.side_to_move) {
+                GameState::Checkmate
+            } else {
+                GameState::Stalemate
             }
-        } else if self.status.is_draw() {
-            Some("½–½")
+        } else if self.pos.half_moves >= 100 {
+            GameState::DrawFiftyMoveClaimable
+        } else if self.repetition_count() >= 3 {
+            GameState::DrawRepetitionClaimable
+        } else if !self.pos.board.has_sufficient_material(Color::White)
+            && !self.pos.board.has_sufficient_material(Color::Black)
+        {
+            GameState::DrawInsufficientMaterial
         } else {
-            None
+            GameState::Running
         }
     }
 
-    pub fn get_pgn(&self) -> String {
-        let mut pgn = self
-            .pgn_metadata
-            .format(self.get_result_pgn(), self.origin_fen.as_deref());
-
-        if !pgn.is_empty() && !self.algebraic_history.is_empty() {
-            pgn.push('\n');
-        }
-
-        for (i, algebraic_move) in self.algebraic_history.iter().enumerate() {
-            let new_round = i % 2 == 0;
-            let round = (i / 2) + 1;
-            if new_round {
-                pgn.push_str(&format!("{}.", round));
-            }
-            pgn.push_str(&format!("{} ", algebraic_move));
-        }
-
-        if let Some(result) = self.get_result_pgn() {
-            pgn.push_str(result);
-        }
-
-        pgn
+    pub fn repetition_count(&self) -> usize {
+        let current = self.pos.hash;
+        let search_depth = (self.pos.half_moves as usize).min(self.hash_history.len());
+        self.hash_history
+            .iter()
+            .rev()
+            .skip(1)
+            .take(search_depth)
+            .filter(|&&h| h == current)
+            .count()
+            + 1
     }
 
-    pub fn get_fen_string(&self) -> String {
-        self.state.get_fen_string()
+    pub fn outcome(&self) -> Option<GameOutcome> {
+        self.outcome
     }
 
-    pub fn from_fen_string(engine: &Arc<Engine>, fen_string: &str) -> Result<Self, Box<dyn Error>> {
-        let state = GameState::from_fen_string(fen_string)?;
-        let (legal_moves, status) = engine.generate_moves(&state);
-        Ok(Self {
-            state,
-            status,
-            legal_moves: legal_moves.iter().copied().collect(),
-            move_history: Vec::new(),
-            algebraic_history: Vec::new(),
-            pgn_metadata: PGNMetadata::default(),
-            origin_fen: Some(fen_string.to_string()),
-        })
-    }
-
-    pub fn set_pgn_meta_data(&mut self, pgn_meta_data: PGNMetadata) {
-        self.pgn_metadata = pgn_meta_data;
-    }
-
-    pub fn archive(&self) -> ArchivedGame {
-        ArchivedGame {
-            pgn: self.pgn_metadata.clone(),
-            origin_fen: self.origin_fen.clone(),
-            played_moves: self.move_history.clone(),
-        }
-    }
-
-    pub fn get_piece_color_at(&self, square: Square) -> Option<(Piece, Color)> {
-        self.board().get_piece_at(square.get_value())
-    }
-
-    pub fn get_threats(&self, engine: &Arc<Engine>, square: Square) -> Vec<Square> {
-        let Some((_, color)) = self.get_piece_color_at(square) else {
-            return vec![];
-        };
-
-        let threat_board =
-            engine.get_square_threats(self.board(), square.get_value(), color.opposite());
-        threat_board.iter_set_bits().map(Square::new).collect()
-    }
-
-    pub fn get_check_threats(&self, engine: &Arc<Engine>) -> Vec<Square> {
-        let king_bb = self.board().get_piece_bb(Piece::King, self.side_to_move());
-        let Some(king_index) = king_bb.get_lowest_set_bit() else {
-            return vec![];
-        };
-        self.get_threats(engine, Square::new(king_index))
-    }
-
-    pub fn is_check(&self, engine: &Arc<Engine>) -> bool {
-        engine.is_in_check(self.board(), self.side_to_move())
+    pub fn is_over(&self) -> bool {
+        self.outcome.is_some()
     }
 }
 
-#[cfg_attr(feature = "bincode", derive(bincode::Encode, bincode::Decode))]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-/// The minimal information needed to recreate a game.
-pub struct ArchivedGame {
-    pub pgn: PGNMetadata,
-    pub origin_fen: Option<String>,
-    pub played_moves: Vec<ChessMove>,
-}
+#[cfg(test)]
+mod tests {
+    use crate::core::position::Position;
+    use crate::game::outcome::{DecisiveReason, DrawReason, GameOutcome};
+    use crate::game::state::GameState;
+    use crate::game::Game;
+    use crate::prelude::*;
+    use std::str::FromStr;
 
-impl ArchivedGame {
-    pub fn move_count(&self) -> u16 {
-        self.played_moves.len() as u16
+    fn play(game: &mut Game, from: Square, to: Square) {
+        let mv = game
+            .find_move(from, to, None)
+            .unwrap_or_else(|| panic!("No legal move from {} to {}", from, to));
+        game.play_move(mv).unwrap();
     }
 
-    pub fn restore(&self, engine: &Arc<Engine>) -> Game {
-        self.replay_till(engine, self.move_count())
+    fn play_promo(game: &mut Game, from: Square, to: Square, piece: Piece) {
+        let mv = game
+            .find_move(from, to, Some(piece))
+            .unwrap_or_else(|| panic!("No legal promo move from {} to {}", from, to));
+        game.play_move(mv).unwrap();
     }
 
-    pub fn replay_till(&self, engine: &Arc<Engine>, half_moves: u16) -> Game {
-        let mut game = if let Some(fen) = &self.origin_fen {
-            Game::from_fen_string(engine, fen)
-                .unwrap_or_else(|_| Game::new(engine, self.pgn.clone()))
-        } else {
-            Game::new(engine, self.pgn.clone())
-        };
+    #[test]
+    fn test_en_passant() {
+        let mut game = Game::new();
+        play(&mut game, C2, C4);
+        play(&mut game, A7, A6);
+        play(&mut game, C4, C5);
+        play(&mut game, D7, D5);
+        play(&mut game, C5, D6);
 
-        for chess_move in self.played_moves.iter().take(half_moves as usize) {
-            game.play_move(engine, *chess_move);
+        let board = game.position().board;
+        assert_eq!(board.piece_at(C5), None);
+        assert_eq!(board.piece_at(D5), None);
+        assert_eq!(board.piece_at(D6), Some((Piece::Pawn, Color::White)));
+    }
+
+    #[test]
+    fn test_promotion_capture() {
+        let mut game = Game::new();
+
+        play(&mut game, D2, D4);
+        play(&mut game, E7, E5);
+        play(&mut game, D4, E5);
+        play(&mut game, D7, D6);
+        play(&mut game, E5, D6);
+        play(&mut game, C7, C6);
+        play(&mut game, D6, D7);
+        play(&mut game, E8, E7);
+        play_promo(&mut game, D7, C8, Piece::Queen);
+
+        let board = game.position().board;
+        assert_eq!(board.piece_at(D7), None);
+        assert_eq!(board.piece_at(C8), Some((Piece::Queen, Color::White)));
+    }
+
+    #[test]
+    fn test_queenside_castle() {
+        let mut game = Game::new();
+
+        play(&mut game, E2, E4);
+        play(&mut game, D7, D5);
+        play(&mut game, E4, E5);
+        play(&mut game, B8, C6);
+        play(&mut game, A2, A3);
+        play(&mut game, C8, F5);
+        play(&mut game, B2, B3);
+        play(&mut game, D8, D6);
+        play(&mut game, C2, C3);
+        play(&mut game, E8, C8);
+
+        let board = game.position().board;
+        assert_eq!(board.piece_at(A8), None);
+        assert_eq!(board.piece_at(E8), None);
+        assert_eq!(board.piece_at(C8), Some((Piece::King, Color::Black)));
+        assert_eq!(board.piece_at(D8), Some((Piece::Rook, Color::Black)));
+    }
+
+    #[test]
+    fn test_checkmate_fools_mate() {
+        let mut game = Game::new();
+        play(&mut game, F2, F3);
+        play(&mut game, E7, E5);
+        play(&mut game, G2, G4);
+        play(&mut game, D8, H4);
+
+        assert!(game.is_over());
+        assert_eq!(
+            game.outcome(),
+            Some(GameOutcome::Decisive {
+                winner: Color::Black,
+                reason: DecisiveReason::Checkmate,
+            })
+        );
+        assert_eq!(game.state(), GameState::Checkmate);
+    }
+
+    #[test]
+    fn test_checkmate_scholars_mate() {
+        let mut game = Game::new();
+        play(&mut game, E2, E4);
+        play(&mut game, E7, E5);
+        play(&mut game, F1, C4);
+        play(&mut game, B8, C6);
+        play(&mut game, D1, H5);
+        play(&mut game, G8, F6);
+        play(&mut game, H5, F7);
+
+        assert_eq!(
+            game.outcome(),
+            Some(GameOutcome::Decisive {
+                winner: Color::White,
+                reason: DecisiveReason::Checkmate,
+            })
+        );
+    }
+
+    #[test]
+    fn test_resignation_white() {
+        let mut game = Game::new();
+        game.resign(Color::White);
+
+        assert!(game.is_over());
+        assert_eq!(
+            game.outcome(),
+            Some(GameOutcome::Decisive {
+                winner: Color::Black,
+                reason: DecisiveReason::Resignation,
+            })
+        );
+    }
+
+    #[test]
+    fn test_resignation_black() {
+        let mut game = Game::new();
+        game.resign(Color::Black);
+
+        assert!(game.is_over());
+        assert_eq!(
+            game.outcome(),
+            Some(GameOutcome::Decisive {
+                winner: Color::White,
+                reason: DecisiveReason::Resignation,
+            })
+        );
+    }
+
+    #[test]
+    fn test_timeout_decisive() {
+        let mut game = Game::new();
+        game.timeout(Color::White);
+
+        assert!(game.is_over());
+        assert_eq!(
+            game.outcome(),
+            Some(GameOutcome::Decisive {
+                winner: Color::Black,
+                reason: DecisiveReason::Timeout,
+            })
+        );
+    }
+
+    #[test]
+    fn test_timeout_vs_insufficient() {
+        let pos = Position::from_str("4k3/8/8/8/8/8/8/4K3 w - - 0 1").unwrap();
+        let mut game = Game::from_position(pos);
+        game.timeout(Color::White);
+
+        assert_eq!(
+            game.outcome(),
+            Some(GameOutcome::Draw(DrawReason::TimeoutVsInsufficient))
+        );
+    }
+
+    #[test]
+    fn test_stalemate() {
+        let pos = Position::from_str("5Q2/8/8/8/8/K7/8/k7 w - - 0 1").unwrap();
+        let mut game = Game::from_position(pos);
+        play(&mut game, F8, B4);
+
+        assert!(game.is_over());
+        assert_eq!(
+            game.outcome(),
+            Some(GameOutcome::Draw(DrawReason::Stalemate))
+        );
+    }
+
+    #[test]
+    fn test_draw_agreement() {
+        let mut game = Game::new();
+        game.agree_draw();
+
+        assert!(game.is_over());
+        assert_eq!(
+            game.outcome(),
+            Some(GameOutcome::Draw(DrawReason::Agreement))
+        );
+    }
+
+    #[test]
+    fn test_insufficient_material_k_vs_k() {
+        let pos = Position::from_str("4k3/8/8/8/8/8/8/4K3 w - - 0 1").unwrap();
+        let game = Game::from_position(pos);
+        assert_eq!(game.state(), GameState::DrawInsufficientMaterial);
+    }
+
+    #[test]
+    fn test_insufficient_material_via_capture() {
+        let pos = Position::from_str("4k3/8/8/8/8/8/8/4K2B w - - 0 1").unwrap();
+        let game = Game::from_position(pos);
+        assert_eq!(game.state(), GameState::DrawInsufficientMaterial);
+    }
+
+    #[test]
+    fn test_fifty_move_rule_claim() {
+        let pos = Position::from_str("4k3/8/8/8/8/8/4R3/4K3 w - - 100 51").unwrap();
+        let mut game = Game::from_position(pos);
+
+        assert_eq!(game.state(), GameState::DrawFiftyMoveClaimable);
+
+        game.claim_draw().unwrap();
+        assert!(game.is_over());
+        assert_eq!(
+            game.outcome(),
+            Some(GameOutcome::Draw(DrawReason::FiftyMoveRule))
+        );
+    }
+
+    #[test]
+    fn test_fifty_move_rule_claim_rejected_when_not_claimable() {
+        let mut game = Game::new();
+        assert!(game.claim_draw().is_err());
+    }
+
+    #[test]
+    fn test_seventy_five_move_auto() {
+        let pos = Position::from_str("4k3/8/8/8/8/8/4R3/4K3 w - - 149 75").unwrap();
+        let mut game = Game::from_position(pos);
+        play(&mut game, E2, E3);
+
+        assert!(game.is_over());
+        assert_eq!(
+            game.outcome(),
+            Some(GameOutcome::Draw(DrawReason::SeventyFiveMoveRule))
+        );
+    }
+
+    #[test]
+    fn test_threefold_repetition_claim() {
+        let mut game = Game::new();
+
+        for _ in 0..2 {
+            play(&mut game, G1, F3);
+            play(&mut game, G8, F6);
+            play(&mut game, F3, G1);
+            play(&mut game, F6, G8);
         }
 
-        game
+        assert_eq!(game.state(), GameState::DrawRepetitionClaimable);
+        game.claim_draw().unwrap();
+        assert!(game.is_over());
+        assert_eq!(
+            game.outcome(),
+            Some(GameOutcome::Draw(DrawReason::ThreefoldRepetition))
+        );
     }
 
-    pub fn replay_iter(&self, engine: &Arc<Engine>) -> impl Iterator<Item = Game> + '_ {
-        let engine = engine.clone();
-        (0..=self.move_count()).map(move |move_count| self.replay_till(&engine, move_count))
+    #[test]
+    fn test_fivefold_repetition_auto() {
+        let mut game = Game::new();
+
+        for _ in 0..4 {
+            play(&mut game, G1, F3);
+            play(&mut game, G8, F6);
+            play(&mut game, F3, G1);
+            play(&mut game, F6, G8);
+        }
+
+        assert!(game.is_over());
+        assert_eq!(
+            game.outcome(),
+            Some(GameOutcome::Draw(DrawReason::FivefoldRepetition))
+        );
+    }
+
+    #[test]
+    fn test_no_draw_claimable_returns_error() {
+        let mut game = Game::new();
+        let err = game.claim_draw();
+        assert_eq!(err, Err(crate::error::ChessError::NoDrawClaimable));
+    }
+
+    #[test]
+    fn test_illegal_move_after_game_over() {
+        let mut game = Game::new();
+        play(&mut game, F2, F3);
+        play(&mut game, E7, E5);
+        play(&mut game, G2, G4);
+        play(&mut game, D8, H4);
+
+        assert!(game.legal_moves().is_empty());
+    }
+
+    #[test]
+    fn test_force_outcome() {
+        let mut game = Game::new();
+        let outcome = GameOutcome::Draw(DrawReason::Agreement);
+        game.force_outcome(outcome);
+
+        assert!(game.is_over());
+        assert_eq!(game.outcome(), Some(outcome));
     }
 }
