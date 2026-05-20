@@ -136,6 +136,10 @@ const ROOK_MAGICS: [u64; 64] = [
     0x18400034840101C2,
 ];
 
+/// Some important terminology for sliding pieces:
+/// - Mask = Everywhere the piece could move to on an empty board
+/// - Blocks = Everywhere the piece could move to on an empty board thats relevant for blocking (so disregarding the edges)
+/// - Attacks = Everywhere the piece could possibly move to right now considering blocking pieces
 #[derive(Debug)]
 pub struct AttackTable {
     pawn_masks: [[BitBoard; 64]; 2],
@@ -180,10 +184,6 @@ impl AttackTable {
         self.pawn_attacks[color as usize][square.index() as usize]
     }
 
-    pub fn pawn_king_attack(&self, square: Square, color: Color) -> BitBoard {
-        self.pawn_attacks[color.opposite() as usize][square.index() as usize]
-    }
-
     pub fn knight_attacks(&self, square: Square) -> BitBoard {
         self.knight_attacks[square.index() as usize]
     }
@@ -192,14 +192,17 @@ impl AttackTable {
         self.king_attacks[square.index() as usize]
     }
 
+    #[allow(unused)]
     pub fn bishop_mask(&self, square: Square) -> BitBoard {
         self.bishop_masks[square.index() as usize]
     }
 
+    #[allow(unused)]
     pub fn rook_mask(&self, square: Square) -> BitBoard {
         self.rook_masks[square.index() as usize]
     }
 
+    #[allow(unused)]
     pub fn queen_mask(&self, square: Square) -> BitBoard {
         self.bishop_mask(square) | self.rook_mask(square)
     }
@@ -212,6 +215,7 @@ impl AttackTable {
         self.rook_blocks[square.index() as usize]
     }
 
+    #[allow(unused)]
     pub fn queen_blocks(&self, square: Square) -> BitBoard {
         self.bishop_blocks(square) | self.rook_blocks(square)
     }
@@ -241,20 +245,18 @@ impl AttackTable {
 pub fn build_pawn_masks() -> [[BitBoard; 64]; 2] {
     let mut table = [[BitBoard::empty(); 64]; 2];
 
-    for index in 0usize..64 {
-        let square = Square::new(index as u8);
-
+    for square in Square::iter_bottom_top() {
         let mut white_mask = 0u64;
         if let Some(sq) = square.up() {
             white_mask |= 1 << sq.index();
         }
-        table[Color::White as usize][index] = BitBoard::new(white_mask);
+        table[Color::White as usize][square.index() as usize] = BitBoard::new(white_mask);
 
         let mut black_mask = 0u64;
         if let Some(sq) = square.down() {
             black_mask |= 1 << sq.index();
         }
-        table[Color::Black as usize][index] = BitBoard::new(black_mask);
+        table[Color::Black as usize][square.index() as usize] = BitBoard::new(black_mask);
     }
 
     table
@@ -263,9 +265,7 @@ pub fn build_pawn_masks() -> [[BitBoard; 64]; 2] {
 pub fn build_pawn_attacks() -> [[BitBoard; 64]; 2] {
     let mut table = [[BitBoard::empty(); 64]; 2];
 
-    for index in 0usize..64 {
-        let square = Square::new(index as u8);
-
+    for square in Square::iter_bottom_top() {
         let mut white_attacks = 0u64;
         if let Some(sq) = square.up_left() {
             white_attacks |= 1 << sq.index();
@@ -273,7 +273,7 @@ pub fn build_pawn_attacks() -> [[BitBoard; 64]; 2] {
         if let Some(sq) = square.up_right() {
             white_attacks |= 1 << sq.index();
         }
-        table[Color::White as usize][index] = BitBoard::new(white_attacks);
+        table[Color::White as usize][square.index() as usize] = BitBoard::new(white_attacks);
 
         let mut black_attacks = 0u64;
         if let Some(sq) = square.down_left() {
@@ -282,7 +282,7 @@ pub fn build_pawn_attacks() -> [[BitBoard; 64]; 2] {
         if let Some(sq) = square.down_right() {
             black_attacks |= 1 << sq.index();
         }
-        table[Color::Black as usize][index] = BitBoard::new(black_attacks);
+        table[Color::Black as usize][square.index() as usize] = BitBoard::new(black_attacks);
     }
 
     table

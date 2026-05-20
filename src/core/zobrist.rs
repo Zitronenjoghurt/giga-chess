@@ -24,33 +24,13 @@ impl ZobristKeys {
 
     fn generate() -> Self {
         let mut rng = Xorshift64(0x98f107a3bc8d61e5);
-
-        let mut pieces = [[[0u64; NUM_SQUARES]; NUM_COLORS]; NUM_PIECES];
-        for p in 0..NUM_PIECES {
-            for c in 0..NUM_COLORS {
-                for sq in 0..NUM_SQUARES {
-                    pieces[p][c][sq] = rng.next();
-                }
-            }
-        }
-
-        let side_to_move = rng.next();
-
-        let mut castling = [0u64; NUM_CASTLING];
-        for i in 0..NUM_CASTLING {
-            castling[i] = rng.next();
-        }
-
-        let mut en_passant = [0u64; NUM_EP_FILES];
-        for i in 0..NUM_EP_FILES {
-            en_passant[i] = rng.next();
-        }
-
         Self {
-            pieces,
-            side_to_move,
-            castling,
-            en_passant,
+            pieces: std::array::from_fn(|_| {
+                std::array::from_fn(|_| std::array::from_fn(|_| rng.next()))
+            }),
+            side_to_move: rng.next(),
+            castling: std::array::from_fn(|_| rng.next()),
+            en_passant: std::array::from_fn(|_| rng.next()),
         }
     }
 
@@ -77,22 +57,18 @@ impl ZobristKeys {
         hash
     }
 
-    #[inline]
     pub fn piece_key(piece: Piece, color: Color, sq: Square) -> u64 {
         Self::get().pieces[piece as usize][color as usize][sq.index() as usize]
     }
 
-    #[inline]
     pub fn side_key() -> u64 {
         Self::get().side_to_move
     }
 
-    #[inline]
     pub fn castling_key(rights: &CastlingRights) -> u64 {
         Self::get().castling[rights.bits() as usize]
     }
 
-    #[inline]
     pub fn ep_key(sq: Square) -> u64 {
         Self::get().en_passant[(sq.file() - 1) as usize]
     }

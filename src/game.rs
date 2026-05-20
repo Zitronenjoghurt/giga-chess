@@ -50,7 +50,7 @@ impl Game {
     pub fn from_moves(moves: &[ChessMove]) -> ChessResult<Self> {
         let mut game = Self::default();
         for (i, mv) in moves.iter().enumerate() {
-            if let Err(err) = game.play_move(*mv) {
+            if game.play_move(*mv).is_err() {
                 return Err(ChessError::IllegalMoveSequence(i));
             }
         }
@@ -215,9 +215,9 @@ impl Game {
 #[cfg(test)]
 mod tests {
     use crate::core::position::Position;
-    use crate::game::Game;
     use crate::game::outcome::{DecisiveReason, DrawReason, GameOutcome};
     use crate::game::state::GameState;
+    use crate::game::Game;
     use crate::prelude::*;
     use std::str::FromStr;
 
