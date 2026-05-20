@@ -55,6 +55,13 @@ impl CastlingRights {
         self.black_king_side &= from != H8 && to != H8;
         self.black_queen_side &= from != A8 && to != A8;
     }
+
+    pub fn bits(&self) -> u8 {
+        (self.white_king_side as u8)
+            | (self.white_queen_side as u8) << 1
+            | (self.black_king_side as u8) << 2
+            | (self.black_queen_side as u8) << 3
+    }
 }
 
 impl Default for CastlingRights {

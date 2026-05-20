@@ -331,6 +331,22 @@ impl ChessBoard {
             .find(|&piece| self.piece_bb(piece, color).is_set(square))
     }
 
+    pub fn has_sufficient_material(&self, color: Color) -> bool {
+        if !self.piece_bb(Piece::Pawn, color).is_empty() {
+            return true;
+        }
+        if !self.piece_bb(Piece::Rook, color).is_empty() {
+            return true;
+        }
+        if !self.piece_bb(Piece::Queen, color).is_empty() {
+            return true;
+        }
+
+        let knights = self.piece_bb(Piece::Knight, color).count_set();
+        let bishops = self.piece_bb(Piece::Bishop, color).count_set();
+        knights + bishops >= 2
+    }
+
     /// Iterate over all squares of the chess board top to bottom, left to right.
     ///
     /// # Arguments
@@ -636,87 +652,4 @@ mod tests {
         assert_eq!(board.piece_at(D2).unwrap(), (Piece::King, Color::Black));
         assert_eq!(board.piece_at(E2), None);
     }
-
-    // ToDo: Move this somewhere else
-    //fn test_play_move() {
-    //    let board = ChessBoard::default();
-    //
-    //    let m = ChessMove::new(C2, 0, ChessMoveType::DoublePawnPush);
-    //    let board = board.play_move(m, Color::White);
-    //    assert_eq!(board.piece_at(C2), None);
-    //    assert_eq!(board.piece_at(C4).unwrap(), (Piece::Pawn, Color::White));
-    //
-    //    let m = ChessMove::new(C4, C5, ChessMoveType::Quiet);
-    //    let board = board.play_move(m, Color::White);
-    //    assert_eq!(board.piece_at(C4), None);
-    //    assert_eq!(board.piece_at(C5).unwrap(), (Piece::Pawn, Color::White));
-    //
-    //    let m = ChessMove::new(D7, 0, ChessMoveType::DoublePawnPush);
-    //    let board = board.play_move(m, Color::Black);
-    //    assert_eq!(board.piece_at(D7), None);
-    //    assert_eq!(board.piece_at(D5).unwrap(), (Piece::Pawn, Color::Black));
-    //
-    //    let m = ChessMove::new(C5, D6, ChessMoveType::EnPassant);
-    //    let board = board.play_move(m, Color::White);
-    //    assert_eq!(board.piece_at(C5), None);
-    //    assert_eq!(board.piece_at(D5), None);
-    //    assert_eq!(board.piece_at(D6).unwrap(), (Piece::Pawn, Color::White));
-    //
-    //    let m = ChessMove::new(D6, D7, ChessMoveType::Quiet);
-    //    let board = board.play_move(m, Color::White);
-    //    assert_eq!(board.piece_at(D6), None);
-    //    assert_eq!(board.piece_at(D7).unwrap(), (Piece::Pawn, Color::White));
-    //
-    //    let m = ChessMove::new(D7, C8, ChessMoveType::QueenPromotionCapture);
-    //    assert_eq!(
-    //        board.piece_at(C8).unwrap(),
-    //        (Piece::Bishop, Color::Black)
-    //    );
-    //    let board = board.play_move(m, Color::White);
-    //    assert_eq!(board.piece_at(D7), None);
-    //    assert_eq!(
-    //        board.piece_at(C8).unwrap(),
-    //        (Piece::Queen, Color::White)
-    //    );
-    //
-    //    let m = ChessMove::new(C8, D8, ChessMoveType::Capture);
-    //    assert_eq!(
-    //        board.piece_at(D8).unwrap(),
-    //        (Piece::Queen, Color::Black)
-    //    );
-    //    let board = board.play_move(m, Color::White);
-    //    assert_eq!(board.piece_at(C8), None);
-    //    assert_eq!(
-    //        board.piece_at(D8).unwrap(),
-    //        (Piece::Queen, Color::White)
-    //    );
-    //
-    //    let m = ChessMove::new(D8, B8, ChessMoveType::Capture);
-    //    assert_eq!(
-    //        board.piece_at(B8).unwrap(),
-    //        (Piece::Knight, Color::Black)
-    //    );
-    //    let board = board.play_move(m, Color::White);
-    //    assert_eq!(board.piece_at(D8), None);
-    //    assert_eq!(
-    //        board.piece_at(B8).unwrap(),
-    //        (Piece::Queen, Color::White)
-    //    );
-    //
-    //    let m = ChessMove::new(B8, B7, ChessMoveType::Capture);
-    //    assert_eq!(board.piece_at(B7).unwrap(), (Piece::Pawn, Color::Black));
-    //    let board = board.play_move(m, Color::White);
-    //    assert_eq!(board.piece_at(B8), None);
-    //    assert_eq!(
-    //        board.piece_at(B7).unwrap(),
-    //        (Piece::Queen, Color::White)
-    //    );
-    //
-    //    let m = ChessMove::new(0, 0, ChessMoveType::QueenCastle);
-    //    let board = board.play_move(m, Color::Black);
-    //    assert_eq!(board.piece_at(A8), None);
-    //    assert_eq!(board.piece_at(E8), None);
-    //    assert_eq!(board.piece_at(C8).unwrap(), (Piece::King, Color::Black));
-    //    assert_eq!(board.piece_at(D8).unwrap(), (Piece::Rook, Color::Black));
-    //}
 }

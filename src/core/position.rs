@@ -1,3 +1,4 @@
+use crate::core::zobrist::ZobristKeys;
 use crate::error::{FenError, FenResult};
 use crate::prelude::*;
 use std::fmt::{Display, Formatter};
@@ -18,22 +19,32 @@ pub struct Position {
     pub half_moves: u8,
     /// Full-move counter, incremented after black's move
     pub full_moves: u16,
+    pub hash: u64,
 }
 
 impl Default for Position {
     fn default() -> Self {
-        Self {
-            board: ChessBoard::default(),
+        Self::from_board(ChessBoard::default())
+    }
+}
+
+impl Position {
+    pub fn from_board(board: ChessBoard) -> Self {
+        let pos = Self {
+            board,
             side_to_move: Color::White,
             castling_rights: CastlingRights::default(),
             en_passant_square: None,
             half_moves: 0,
             full_moves: 1,
+            hash: 0,
+        };
+        Self {
+            hash: ZobristKeys::full_hash(&pos),
+            ..pos
         }
     }
-}
 
-impl Position {
     /// Applying a move assuming it's legal.
     pub fn make_move(mut self, mv: ChessMove) -> Self {
         let from = mv.from();
@@ -46,14 +57,18 @@ impl Position {
             return self;
         };
 
+        let mut hash = self.hash;
+
         match flags {
             MoveFlags::EnPassant => {
-                self.board
-                    .clear(Piece::Pawn, opponent, to.pawn_push(opponent));
+                let capture_square = to.pawn_push(opponent);
+                self.board.clear(Piece::Pawn, opponent, capture_square);
+                hash ^= ZobristKeys::piece_key(Piece::Pawn, opponent, capture_square);
             }
             _ if flags.is_capture() => {
                 if let Some(captured) = self.board.piece_at_with_color(to, opponent) {
                     self.board.clear(captured, opponent, to);
+                    hash ^= ZobristKeys::piece_key(captured, opponent, to);
                 }
             }
             _ => {}
@@ -61,27 +76,39 @@ impl Position {
 
         match flags {
             MoveFlags::KingCastle => {
-                let (king_from, king_to, rook_from, rook_to) = color.kingside_castle_squares();
-                self.board
-                    .move_piece(Piece::King, color, king_from, king_to);
-                self.board
-                    .move_piece(Piece::Rook, color, rook_from, rook_to);
+                let (kf, kt, rf, rt) = color.kingside_castle_squares();
+                self.board.move_piece(Piece::King, color, kf, kt);
+                self.board.move_piece(Piece::Rook, color, rf, rt);
+                hash ^= ZobristKeys::piece_key(Piece::King, color, kf);
+                hash ^= ZobristKeys::piece_key(Piece::King, color, kt);
+                hash ^= ZobristKeys::piece_key(Piece::Rook, color, rf);
+                hash ^= ZobristKeys::piece_key(Piece::Rook, color, rt);
             }
             MoveFlags::QueenCastle => {
-                let (king_from, king_to, rook_from, rook_to) = color.queenside_castle_squares();
-                self.board
-                    .move_piece(Piece::King, color, king_from, king_to);
-                self.board
-                    .move_piece(Piece::Rook, color, rook_from, rook_to);
+                let (kf, kt, rf, rt) = color.queenside_castle_squares();
+                self.board.move_piece(Piece::King, color, kf, kt);
+                self.board.move_piece(Piece::Rook, color, rf, rt);
+                hash ^= ZobristKeys::piece_key(Piece::King, color, kf);
+                hash ^= ZobristKeys::piece_key(Piece::King, color, kt);
+                hash ^= ZobristKeys::piece_key(Piece::Rook, color, rf);
+                hash ^= ZobristKeys::piece_key(Piece::Rook, color, rt);
             }
             _ if flags.is_promotion() => {
+                let promo = flags.promotion_piece().unwrap();
                 self.board.clear(piece, color, from);
-                self.board.set(flags.promotion_piece().unwrap(), color, to);
+                self.board.set(promo, color, to);
+                hash ^= ZobristKeys::piece_key(piece, color, from);
+                hash ^= ZobristKeys::piece_key(promo, color, to);
             }
             _ => {
                 self.board.move_piece(piece, color, from, to);
+                hash ^= ZobristKeys::piece_key(piece, color, from);
+                hash ^= ZobristKeys::piece_key(piece, color, to);
             }
         }
+
+        let old_ep = self.en_passant_square;
+        let old_castling = self.castling_rights;
 
         self.en_passant_square = if flags == MoveFlags::DoublePawnPush {
             Some(from.pawn_push(color))
@@ -102,6 +129,22 @@ impl Position {
         self.castling_rights.update(from, to);
         self.side_to_move = opponent;
 
+        hash ^= ZobristKeys::side_key();
+
+        let new_castling = self.castling_rights;
+        if old_castling != new_castling {
+            hash ^= ZobristKeys::castling_key(&old_castling);
+            hash ^= ZobristKeys::castling_key(&new_castling);
+        }
+
+        if let Some(sq) = old_ep {
+            hash ^= ZobristKeys::ep_key(sq);
+        }
+        if let Some(sq) = self.en_passant_square {
+            hash ^= ZobristKeys::ep_key(sq);
+        }
+
+        self.hash = hash;
         self
     }
 }
@@ -170,13 +213,18 @@ impl FromStr for Position {
             FenError::InvalidPosition(format!("Invalid full-move count: {}", err))
         })?;
 
-        Ok(Self {
+        let pos = Self {
             board,
             side_to_move,
             castling_rights,
             en_passant_square,
             half_moves,
             full_moves,
+            hash: 0,
+        };
+        Ok(Self {
+            hash: ZobristKeys::full_hash(&pos),
+            ..pos
         })
     }
 }
@@ -184,6 +232,7 @@ impl FromStr for Position {
 #[cfg(test)]
 mod tests {
     use crate::core::position::Position;
+    use crate::core::zobrist::ZobristKeys;
     use crate::prelude::*;
     use std::str::FromStr;
 
@@ -198,14 +247,11 @@ mod tests {
         board.set(Piece::Pawn, Color::Black, B4);
         board.set(Piece::Bishop, Color::Black, B2);
 
-        let pos = Position {
-            board,
-            side_to_move: Color::White,
-            castling_rights: CastlingRights::none(),
-            en_passant_square: None,
-            half_moves: 1,
-            full_moves: 123,
-        };
+        let mut pos = Position::from_board(board);
+        pos.half_moves = 1;
+        pos.full_moves = 123;
+        pos.castling_rights = CastlingRights::none();
+        pos.hash = ZobristKeys::full_hash(&pos);
 
         let fen_string = pos.to_string();
         assert_eq!(fen_string, "4k1K1/7P/8/1p1q4/1p6/8/1b6/8 w - - 1 123");

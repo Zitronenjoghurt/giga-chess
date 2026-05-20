@@ -1,6 +1,5 @@
 use crate::prelude::Color;
 
-// ToDo: Make all outcomes achievable in game
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

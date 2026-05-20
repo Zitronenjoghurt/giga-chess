@@ -16,7 +16,7 @@ pub enum FenError {
 }
 
 pub type ChessResult<T> = Result<T, ChessError>;
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum ChessError {
     #[error("Illegal move")]
     IllegalMove,

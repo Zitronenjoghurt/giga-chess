@@ -138,17 +138,16 @@ impl Session {
     }
 
     fn process_move(&mut self, mv: ChessMove, unix_ms: u64) -> SessionResult<()> {
+        let color = self.game.position().side_to_move;
         let san = move_to_san(self.game.position(), mv, self.game.legal_moves())?;
         self.game.play_move(mv)?;
         self.san_history.push(san);
         self.draw_offer = None;
 
-        if let Some(clock) = &mut self.clock {
-            let timeout = clock.switch(unix_ms);
-            if timeout {
-                self.game
-                    .timeout(self.game.position().side_to_move.opposite());
-            }
+        if let Some(clock) = &mut self.clock
+            && clock.switch(unix_ms)
+        {
+            self.game.timeout(color);
         }
 
         Ok(())
@@ -182,7 +181,6 @@ impl Session {
     }
 }
 
-// ToDo: message pack serialization + brotli compression (as optional feature)
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -219,5 +217,292 @@ impl SessionRecord {
         session.draw_offer = self.draw_offer;
         session.clock = self.clock;
         Ok(session)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::game::mode::GameMode;
+    use crate::game::outcome::{DecisiveReason, GameOutcome};
+    use crate::prelude::*;
+    use crate::session::action::SessionAction;
+    use crate::session::clock::ChessClockConfig;
+    use crate::session::config::{SessionConfig, StartingPosition, TimeControl};
+
+    fn test_config() -> SessionConfig {
+        SessionConfig {
+            mode: GameMode::Standard,
+            starting_position: StartingPosition::Default,
+            time_control: TimeControl::Unlimited,
+            pgn: Default::default(),
+        }
+    }
+
+    #[test]
+    fn test_record_and_restore_basic_moves() {
+        let config = test_config();
+        let mut session = Session::from_config(&config).unwrap();
+
+        session
+            .act(
+                Color::White,
+                SessionAction::MoveFromTo {
+                    from: E2,
+                    to: E4,
+                    promotion: None,
+                },
+                0,
+            )
+            .unwrap();
+        session
+            .act(
+                Color::Black,
+                SessionAction::MoveFromTo {
+                    from: E7,
+                    to: E5,
+                    promotion: None,
+                },
+                0,
+            )
+            .unwrap();
+        session
+            .act(
+                Color::White,
+                SessionAction::MoveFromTo {
+                    from: G1,
+                    to: F3,
+                    promotion: None,
+                },
+                0,
+            )
+            .unwrap();
+        session
+            .act(
+                Color::Black,
+                SessionAction::MoveFromTo {
+                    from: B8,
+                    to: C6,
+                    promotion: None,
+                },
+                0,
+            )
+            .unwrap();
+
+        let record = session.record();
+        let restored = record.restore().unwrap();
+
+        assert_eq!(session.game().position(), restored.game().position());
+
+        assert_eq!(session.san_history(), restored.san_history());
+        assert_eq!(restored.san_history(), &["e4", "e5", "Nf3", "Nc6"]);
+    }
+
+    #[test]
+    fn test_record_and_restore_draw_offer() {
+        let config = test_config();
+        let mut session = Session::from_config(&config).unwrap();
+
+        session
+            .act(
+                Color::White,
+                SessionAction::MoveFromTo {
+                    from: E2,
+                    to: E4,
+                    promotion: None,
+                },
+                0,
+            )
+            .unwrap();
+
+        session
+            .act(Color::White, SessionAction::OfferDraw, 0)
+            .unwrap();
+        assert_eq!(session.draw_offer(), Some(Color::White));
+
+        let record = session.record();
+        let restored = record.restore().unwrap();
+
+        assert_eq!(restored.draw_offer(), Some(Color::White));
+    }
+
+    #[test]
+    fn test_record_and_restore_checkmate_outcome() {
+        let config = test_config();
+        let mut session = Session::from_config(&config).unwrap();
+
+        session
+            .act(
+                Color::White,
+                SessionAction::MoveFromTo {
+                    from: F2,
+                    to: F3,
+                    promotion: None,
+                },
+                0,
+            )
+            .unwrap();
+        session
+            .act(
+                Color::Black,
+                SessionAction::MoveFromTo {
+                    from: E7,
+                    to: E5,
+                    promotion: None,
+                },
+                0,
+            )
+            .unwrap();
+        session
+            .act(
+                Color::White,
+                SessionAction::MoveFromTo {
+                    from: G2,
+                    to: G4,
+                    promotion: None,
+                },
+                0,
+            )
+            .unwrap();
+        session
+            .act(
+                Color::Black,
+                SessionAction::MoveFromTo {
+                    from: D8,
+                    to: H4,
+                    promotion: None,
+                },
+                0,
+            )
+            .unwrap();
+
+        assert!(session.game().is_over());
+
+        let record = session.record();
+        let restored = record.restore().unwrap();
+
+        assert!(restored.game().is_over());
+        assert_eq!(session.game().outcome(), restored.game().outcome());
+        assert_eq!(
+            restored.game().outcome(),
+            Some(GameOutcome::Decisive {
+                winner: Color::Black,
+                reason: DecisiveReason::Checkmate
+            })
+        );
+    }
+
+    #[test]
+    fn test_record_and_restore_resignation() {
+        let config = test_config();
+        let mut session = Session::from_config(&config).unwrap();
+
+        session
+            .act(
+                Color::White,
+                SessionAction::MoveFromTo {
+                    from: E2,
+                    to: E4,
+                    promotion: None,
+                },
+                0,
+            )
+            .unwrap();
+
+        session.act(Color::Black, SessionAction::Resign, 0).unwrap();
+
+        let record = session.record();
+        let restored = record.restore().unwrap();
+
+        assert!(restored.game().is_over());
+        assert_eq!(
+            restored.game().outcome(),
+            Some(GameOutcome::Decisive {
+                winner: Color::White,
+                reason: DecisiveReason::Resignation
+            })
+        );
+    }
+
+    #[test]
+    fn test_record_and_restore_pgn_headers() {
+        let mut config = test_config();
+
+        config.pgn.event = Some("World Championship".to_string());
+        config.pgn.white = Some("Magnus Carlsen".to_string());
+        config.pgn.black = Some("Ian Nepomniachtchi".to_string());
+        config
+            .pgn
+            .extra
+            .push(("ECO".to_string(), "C42".to_string()));
+
+        let session = Session::from_config(&config).unwrap();
+
+        let record = session.record();
+        let restored = record.restore().unwrap();
+
+        assert_eq!(session.config().pgn, restored.config().pgn);
+        assert_eq!(
+            restored.config().pgn.event.as_deref(),
+            Some("World Championship")
+        );
+        assert_eq!(restored.config().pgn.extra.len(), 1);
+        assert_eq!(session.pgn(), restored.pgn());
+    }
+
+    #[test]
+    fn test_record_and_restore_clock_state() {
+        let mut config = test_config();
+
+        config.time_control = TimeControl::Clock(ChessClockConfig {
+            white_ms: 300_000,
+            black_ms: 300_000,
+            white_inc_ms: 2_000,
+            black_inc_ms: 2_000,
+        });
+
+        let mut session = Session::from_config(&config).unwrap();
+
+        session
+            .act(
+                Color::White,
+                SessionAction::MoveFromTo {
+                    from: E2,
+                    to: E4,
+                    promotion: None,
+                },
+                5000,
+            )
+            .unwrap();
+
+        session
+            .act(
+                Color::Black,
+                SessionAction::MoveFromTo {
+                    from: E7,
+                    to: E5,
+                    promotion: None,
+                },
+                8000,
+            )
+            .unwrap();
+
+        let record = session.record();
+        let restored = record.restore().unwrap();
+
+        let original_clock = session.clock().expect("Session should have a clock");
+        let restored_clock = restored
+            .clock()
+            .expect("Restored session should have a clock");
+
+        assert_eq!(original_clock, restored_clock);
+        assert_eq!(restored_clock.active(), Color::White);
+        assert_eq!(
+            original_clock.remaining_ms(Color::White, 10000),
+            restored_clock.remaining_ms(Color::White, 10000)
+        );
+        assert_eq!(
+            original_clock.remaining_ms(Color::Black, 10000),
+            restored_clock.remaining_ms(Color::Black, 10000)
+        );
     }
 }

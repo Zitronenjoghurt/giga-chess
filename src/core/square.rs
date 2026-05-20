@@ -37,12 +37,12 @@ impl Square {
         (self.file() + self.rank()) % 2 == 1
     }
 
-    // ToDo: 0-based?
+    /// 1-based
     pub const fn rank(&self) -> u8 {
         (self.0 / 8) + 1
     }
 
-    // ToDo: 0-based?
+    /// 1-based
     pub const fn file(&self) -> u8 {
         (self.0 % 8) + 1
     }
@@ -401,9 +401,9 @@ impl FromStr for Square {
             'G' => 7,
             'H' => 8,
             _ => {
-                return Err(FenError::InvalidSquare(
-                    format!("Invalid file '{file_char}'").into(),
-                ));
+                return Err(FenError::InvalidSquare(format!(
+                    "Invalid file '{file_char}'"
+                )));
             }
         };
 
@@ -417,9 +417,9 @@ impl FromStr for Square {
             '7' => 7,
             '8' => 8,
             _ => {
-                return Err(FenError::InvalidSquare(
-                    format!("Invalid rank '{rank_char}'").into(),
-                ));
+                return Err(FenError::InvalidSquare(format!(
+                    "Invalid rank '{rank_char}'"
+                )));
             }
         };
 
