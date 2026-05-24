@@ -25,7 +25,7 @@ type ChessBoardIterator<'a> = Box<dyn Iterator<Item = (Square, Option<(Piece, Co
 /// A chess board containing 12 bitboards for each piece and color.
 ///
 /// Square indexing starts with 0 at A1, 1 at B1, ... and ends with 63 at H8.
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(transparent)]

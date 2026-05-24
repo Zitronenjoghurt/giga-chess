@@ -14,6 +14,10 @@ pub enum GameOutcome {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "strum",
+    derive(strum::EnumIter, strum::EnumIs, strum::EnumCount)
+)]
 pub enum DecisiveReason {
     /// One sides king was in check and had no legal moves to move it out of check.
     Checkmate,
@@ -26,6 +30,10 @@ pub enum DecisiveReason {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "strum",
+    derive(strum::EnumIter, strum::EnumIs, strum::EnumCount)
+)]
 pub enum DrawReason {
     /// One side had no legal moves but was not in check.
     Stalemate,

@@ -3,9 +3,14 @@ use crate::error::{FenError, FenResult};
 use std::fmt::Display;
 use std::str::FromStr;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "strum",
+    derive(strum::EnumIter, strum::EnumIs, strum::EnumCount, strum::FromRepr)
+)]
+#[repr(u8)]
 pub enum Piece {
     Pawn = 0,
     Knight = 1,
@@ -92,6 +97,11 @@ impl Display for Piece {
 #[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "strum",
+    derive(strum::EnumIter, strum::EnumIs, strum::EnumCount, strum::FromRepr)
+)]
+#[repr(u8)]
 pub enum Color {
     #[default]
     White = 0,
