@@ -1,3 +1,4 @@
+use crate::core::bitboard::BitBoard;
 use crate::core::position::Position;
 use crate::error::{ChessError, ChessResult};
 use crate::game::mode::GameMode;
@@ -5,7 +6,7 @@ use crate::game::outcome::{DecisiveReason, DrawReason, GameOutcome};
 use crate::game::state::GameState;
 use crate::moves::generator::MoveGenerator;
 use crate::moves::list::MoveList;
-use crate::prelude::{ChessMove, Color, Piece, Square};
+use crate::prelude::{ChessMove, Color, MoveFlags, Piece, Square};
 
 pub mod mode;
 pub mod outcome;
@@ -22,6 +23,8 @@ pub struct Game {
     history: Vec<ChessMove>,
     hash_history: Vec<u64>,
     outcome: Option<GameOutcome>,
+    /// The pieces which white captured at 0, black captured at 1.
+    captured_pieces: [Vec<Piece>; 2],
 }
 
 impl Default for Game {
@@ -44,6 +47,7 @@ impl Game {
             history: vec![],
             hash_history: vec![pos.hash],
             outcome: None,
+            captured_pieces: [vec![], vec![]],
         }
     }
 
@@ -65,6 +69,18 @@ impl Game {
     pub fn play_move(&mut self, mv: ChessMove) -> ChessResult<()> {
         if !self.legal_moves.contains(mv) {
             return Err(ChessError::IllegalMove);
+        }
+
+        if mv.flags().is_capture() {
+            let opponent = self.pos.side_to_move.opposite();
+            let captured = if mv.flags() == MoveFlags::EnPassant {
+                Some(Piece::Pawn)
+            } else {
+                self.pos.board.piece_at_with_color(mv.to(), opponent)
+            };
+            if let Some(captured) = captured {
+                self.captured_pieces[self.pos.side_to_move as usize].push(captured);
+            }
         }
 
         self.pos = self.pos.make_move(mv);
@@ -228,6 +244,14 @@ impl Game {
     pub fn pretty_grid(&self) -> String {
         self.pos.pretty_grid()
     }
+
+    pub fn captured_pieces(&self, color: Color) -> &[Piece] {
+        &self.captured_pieces[color as usize]
+    }
+
+    pub fn king_threats(&self, color: Color) -> BitBoard {
+        MoveGenerator::get().all_king_attackers(self.position(), color)
+    }
 }
 
 #[cfg(test)]
@@ -266,6 +290,7 @@ mod tests {
         assert_eq!(board.piece_at(C5), None);
         assert_eq!(board.piece_at(D5), None);
         assert_eq!(board.piece_at(D6), Some((Piece::Pawn, Color::White)));
+        assert_eq!(game.captured_pieces(Color::White), &[Piece::Pawn]);
     }
 
     #[test]
@@ -285,6 +310,10 @@ mod tests {
         let board = game.position().board;
         assert_eq!(board.piece_at(D7), None);
         assert_eq!(board.piece_at(C8), Some((Piece::Queen, Color::White)));
+        assert_eq!(
+            game.captured_pieces(Color::White),
+            &[Piece::Pawn, Piece::Pawn, Piece::Bishop]
+        );
     }
 
     #[test]
@@ -326,6 +355,9 @@ mod tests {
             })
         );
         assert_eq!(game.state(), GameState::Checkmate);
+        let threats = game.king_threats(Color::White);
+        assert_eq!(threats.count_set(), 1);
+        assert!(threats.is_set(H4));
     }
 
     #[test]
@@ -346,6 +378,11 @@ mod tests {
                 reason: DecisiveReason::Checkmate,
             })
         );
+        let threats = game.king_threats(Color::Black);
+        assert_eq!(threats.count_set(), 1);
+        assert!(threats.is_set(F7));
+        assert_eq!(game.captured_pieces(Color::White), &[Piece::Pawn]);
+        assert_eq!(game.captured_pieces(Color::Black), &[]);
     }
 
     #[test]
@@ -542,5 +579,43 @@ mod tests {
 
         assert!(game.is_over());
         assert_eq!(game.outcome(), Some(outcome));
+    }
+
+    #[test]
+    fn test_captured_pieces_both_sides() {
+        let mut game = Game::new();
+        play(&mut game, E2, E4);
+        play(&mut game, D7, D5);
+        play(&mut game, E4, D5);
+        play(&mut game, D8, D5);
+        play(&mut game, B1, C3);
+        play(&mut game, D5, C4);
+
+        let mut game = Game::new();
+        play(&mut game, E2, E4);
+        play(&mut game, D7, D5);
+        play(&mut game, E4, D5);
+        play(&mut game, D8, D5);
+
+        assert_eq!(game.captured_pieces(Color::White), &[Piece::Pawn]);
+        assert_eq!(game.captured_pieces(Color::Black), &[Piece::Pawn]);
+    }
+
+    #[test]
+    fn test_king_threats_double_check() {
+        let pos = Position::from_str("4k3/8/8/8/1b6/8/8/R3K2r w - - 0 1").unwrap();
+        let game = Game::from_position(pos);
+
+        let threats = game.king_threats(Color::White);
+        assert_eq!(threats.count_set(), 2);
+        assert!(threats.is_set(B4));
+        assert!(threats.is_set(H1));
+    }
+
+    #[test]
+    fn test_king_threats_not_in_check() {
+        let game = Game::new();
+        assert!(game.king_threats(Color::White).is_empty());
+        assert!(game.king_threats(Color::Black).is_empty());
     }
 }

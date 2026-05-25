@@ -247,4 +247,27 @@ impl MoveGenerator {
 
         false
     }
+
+    pub fn all_king_attackers(&self, pos: &Position, color: Color) -> BitBoard {
+        let king_bb = pos.board.piece_bb(Piece::King, color);
+        let Some(king_sq) = king_bb.get_lowest_set() else {
+            return BitBoard::empty();
+        };
+
+        let by = color.opposite();
+        let board = &pos.board;
+        let occupied = board.occupied_bb();
+
+        let pawns = self.table.pawn_attacks(king_sq, color) & board.piece_bb(Piece::Pawn, by);
+        let knights = self.table.knight_attacks(king_sq) & board.piece_bb(Piece::Knight, by);
+        let king = self.table.king_attacks(king_sq) & board.piece_bb(Piece::King, by);
+
+        let diag = board.piece_bb(Piece::Bishop, by) | board.piece_bb(Piece::Queen, by);
+        let bishops = self.table.bishop_attacks(king_sq, occupied) & diag;
+
+        let ortho = board.piece_bb(Piece::Rook, by) | board.piece_bb(Piece::Queen, by);
+        let rooks = self.table.rook_attacks(king_sq, occupied) & ortho;
+
+        pawns | knights | king | bishops | rooks
+    }
 }
