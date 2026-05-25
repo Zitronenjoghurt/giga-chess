@@ -60,6 +60,10 @@ impl ChessClock {
         }
     }
 
+    pub fn increment_ms(&self, color: Color) -> u64 {
+        self.increment_ms[color as usize]
+    }
+
     pub fn is_out_of_time(&self, color: Color, now_ms: u64) -> bool {
         self.remaining_ms(color, now_ms) == 0
     }
