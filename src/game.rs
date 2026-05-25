@@ -127,6 +127,12 @@ impl Game {
             .copied()
     }
 
+    pub fn has_promotion_move(&self, from: Square, to: Square) -> bool {
+        self.legal_moves
+            .iter()
+            .any(|mv| mv.from() == from && mv.to() == to && mv.flags().is_promotion())
+    }
+
     pub fn play(&mut self, from: Square, to: Square) -> ChessResult<()> {
         let mv = self
             .find_move(from, to, None)
@@ -305,6 +311,8 @@ mod tests {
         play(&mut game, C7, C6);
         play(&mut game, D6, D7);
         play(&mut game, E8, E7);
+        assert!(!game.has_promotion_move(D7, E8));
+        assert!(game.has_promotion_move(D7, C8));
         play_promo(&mut game, D7, C8, Piece::Queen);
 
         let board = game.position().board;
