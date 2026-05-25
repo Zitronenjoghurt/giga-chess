@@ -15,4 +15,5 @@ pub enum SessionAction {
     AcceptDraw,
     DeclineDraw,
     ClaimDraw,
+    ClaimTimeout,
 }

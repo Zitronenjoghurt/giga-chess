@@ -126,6 +126,17 @@ impl Session {
                 self.game.claim_draw()?;
                 Ok(self.outcome_event())
             }
+            SessionAction::ClaimTimeout => {
+                let turn = self.game.position().side_to_move;
+                if let Some(clock) = &self.clock
+                    && clock.is_out_of_time(color, unix_ms)
+                {
+                    self.game.timeout(turn);
+                    Ok(self.outcome_event())
+                } else {
+                    Err(SessionError::NotOutOfTime)
+                }
+            }
         }
     }
 

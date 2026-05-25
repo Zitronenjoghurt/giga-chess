@@ -41,4 +41,6 @@ pub enum SessionError {
     NoDrawOffer,
     #[error("Color is not to move")]
     NotMovingColor,
+    #[error("The clock is not out of time")]
+    NotOutOfTime,
 }

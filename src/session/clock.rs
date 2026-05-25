@@ -34,15 +34,21 @@ impl ChessClock {
 
     pub fn switch(&mut self, now_ms: u64) -> bool {
         let index = self.active as usize;
+        let mut timeout = false;
+
         if let Some(last) = self.last_move_timestamp_ms {
             let elapsed = now_ms.saturating_sub(last);
             self.remaining_ms[index] = self.remaining_ms[index].saturating_sub(elapsed);
-            self.remaining_ms[index] += self.increment_ms[index];
+            if self.remaining_ms[index] == 0 {
+                timeout = true;
+            } else {
+                self.remaining_ms[index] += self.increment_ms[index];
+            }
         }
-        self.last_move_timestamp_ms = Some(now_ms);
 
-        let timeout = self.remaining_ms[index] == 0;
+        self.last_move_timestamp_ms = Some(now_ms);
         self.active = self.active.opposite();
+
         timeout
     }
 
