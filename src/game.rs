@@ -258,6 +258,14 @@ impl Game {
     pub fn king_threats(&self, color: Color) -> BitBoard {
         MoveGenerator::get().all_king_attackers(self.position(), color)
     }
+
+    pub fn legal_targets(&self, from: Square) -> Vec<Square> {
+        self.legal_moves()
+            .iter()
+            .filter(|mv| mv.from() == from)
+            .map(|mv| mv.to())
+            .collect()
+    }
 }
 
 #[cfg(test)]
