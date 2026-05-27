@@ -6,6 +6,7 @@ use crate::game::outcome::{DecisiveReason, DrawReason, GameOutcome};
 use crate::game::state::GameState;
 use crate::moves::generator::MoveGenerator;
 use crate::moves::list::MoveList;
+use crate::notation::san::move_to_san;
 use crate::prelude::{ChessMove, Color, MoveFlags, Piece, Square};
 
 pub mod mode;
@@ -111,6 +112,12 @@ impl Game {
         }
 
         Ok(())
+    }
+
+    pub fn play_move_get_san(&mut self, mv: ChessMove) -> ChessResult<String> {
+        let san = move_to_san(&self.pos, mv, &self.legal_moves)?;
+        self.play_move(mv)?;
+        Ok(san)
     }
 
     pub fn find_move(

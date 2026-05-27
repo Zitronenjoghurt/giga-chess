@@ -2,7 +2,6 @@ use crate::core::position::Position;
 use crate::error::{ChessError, SessionError, SessionResult};
 use crate::game::outcome::GameOutcome;
 use crate::game::Game;
-use crate::notation::san::move_to_san;
 use crate::prelude::{ChessMove, Color};
 use crate::session::action::SessionAction;
 use crate::session::clock::ChessClock;
@@ -150,8 +149,7 @@ impl Session {
 
     fn process_move(&mut self, mv: ChessMove, unix_ms: u64) -> SessionResult<()> {
         let color = self.game.position().side_to_move;
-        let san = move_to_san(self.game.position(), mv, self.game.legal_moves())?;
-        self.game.play_move(mv)?;
+        let san = self.game.play_move_get_san(mv)?;
         self.san_history.push(san);
         self.draw_offer = None;
 
