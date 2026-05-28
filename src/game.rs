@@ -273,6 +273,10 @@ impl Game {
             .map(|mv| mv.to())
             .collect()
     }
+
+    pub fn fen(&self) -> String {
+        self.pos.to_string()
+    }
 }
 
 #[cfg(test)]

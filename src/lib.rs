@@ -7,3 +7,5 @@ pub mod moves;
 pub mod notation;
 pub mod prelude;
 pub mod session;
+#[cfg(feature = "stockfish-manager")]
+pub mod stockfish;

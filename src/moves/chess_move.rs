@@ -52,6 +52,12 @@ impl ChessMove {
     }
 }
 
+impl Display for ChessMove {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}{}", self.from(), self.to())
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[repr(u8)]
 pub enum MoveFlags {
@@ -121,30 +127,6 @@ impl From<u8> for MoveFlags {
             14 => MoveFlags::RookPromoCap,
             15 => MoveFlags::QueenPromoCap,
             _ => unreachable!(),
-        }
-    }
-}
-
-impl Display for ChessMove {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let from = self.from().to_string().to_lowercase();
-        let to = self.to().to_string().to_lowercase();
-
-        match self.flags() {
-            MoveFlags::Quiet => write!(f, "{}-{}", from, to),
-            MoveFlags::DoublePawnPush => write!(f, "{} DPP", from),
-            MoveFlags::KingCastle => write!(f, "KC"),
-            MoveFlags::QueenCastle => write!(f, "QC"),
-            MoveFlags::Capture => write!(f, "{}-{} C", from, to),
-            MoveFlags::EnPassant => write!(f, "{}-{} EP", from, to),
-            MoveFlags::KnightPromotion => write!(f, "{}-{} PN", from, to),
-            MoveFlags::BishopPromotion => write!(f, "{}-{} PB", from, to),
-            MoveFlags::RookPromotion => write!(f, "{}-{} PR", from, to),
-            MoveFlags::QueenPromotion => write!(f, "{}-{} PQ", from, to),
-            MoveFlags::KnightPromoCap => write!(f, "{}-{} PN C", from, to),
-            MoveFlags::BishopPromoCap => write!(f, "{}-{} PB C", from, to),
-            MoveFlags::RookPromoCap => write!(f, "{}-{} PR C", from, to),
-            MoveFlags::QueenPromoCap => write!(f, "{}-{} PQ C", from, to),
         }
     }
 }

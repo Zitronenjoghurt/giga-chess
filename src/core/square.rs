@@ -392,14 +392,14 @@ impl FromStr for Square {
         let rank_char = s.chars().nth(1).unwrap();
 
         let file: u8 = match file_char {
-            'A' => 1,
-            'B' => 2,
-            'C' => 3,
-            'D' => 4,
-            'E' => 5,
-            'F' => 6,
-            'G' => 7,
-            'H' => 8,
+            'a' => 1,
+            'b' => 2,
+            'c' => 3,
+            'd' => 4,
+            'e' => 5,
+            'f' => 6,
+            'g' => 7,
+            'h' => 8,
             _ => {
                 return Err(FenError::InvalidSquare(format!(
                     "Invalid file '{file_char}'"
