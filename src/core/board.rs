@@ -5,7 +5,7 @@ use crate::error::{FenError, FenResult};
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
-const DEFAULT_BOARD: ChessBoard = ChessBoard([
+pub const DEFAULT_BOARD: ChessBoard = ChessBoard([
     BitBoard::new(0b00000000_00000000_00000000_00000000_00000000_00000000_11111111_00000000),
     BitBoard::new(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_01000010),
     BitBoard::new(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00100100),
