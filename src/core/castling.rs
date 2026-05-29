@@ -1,5 +1,6 @@
 use crate::core::square::*;
 use crate::error::{FenError, FenResult};
+use crate::storage::io::{BitDecode, BitEncode, BitReader};
 use std::fmt::Display;
 use std::str::FromStr;
 
@@ -62,6 +63,15 @@ impl CastlingRights {
             | (self.black_king_side as u8) << 2
             | (self.black_queen_side as u8) << 3
     }
+
+    pub fn from_bits(bits: u8) -> Self {
+        Self {
+            white_king_side: (bits & 0b0001) != 0,
+            white_queen_side: (bits & 0b0010) != 0,
+            black_king_side: (bits & 0b0100) != 0,
+            black_queen_side: (bits & 0b1000) != 0,
+        }
+    }
 }
 
 impl Default for CastlingRights {
@@ -118,5 +128,22 @@ impl Display for CastlingRights {
         } else {
             write!(f, "{fen}")
         }
+    }
+}
+
+impl BitEncode for CastlingRights {
+    fn encode<W: std::io::Write>(
+        &self,
+        w: &mut crate::storage::io::BitWriter<W>,
+    ) -> std::io::Result<()> {
+        w.write_bits(self.bits(), 4)?;
+        Ok(())
+    }
+}
+
+impl BitDecode for CastlingRights {
+    fn decode(r: &mut BitReader) -> std::io::Result<Self> {
+        let bits = r.read_bits(4)?;
+        Ok(CastlingRights::from_bits(bits))
     }
 }

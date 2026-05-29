@@ -59,13 +59,32 @@ impl<'a> BitReader<'a> {
     }
 
     #[inline]
-    pub fn read_bool(&mut self) -> io::Result<bool> {
-        Ok(self.read_bits(1)? != 0)
+    pub fn read_bits_u16(&mut self, count: u8) -> io::Result<u16> {
+        if count == 0 || count > 16 {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "bit count must be between 1 and 16",
+            ));
+        }
+
+        if count > 8 {
+            let overflow = count - 8;
+            let high = self.read_bits(overflow)? as u16;
+            let low = self.read_bits(8)? as u16;
+            Ok((high << 8) | low)
+        } else {
+            Ok(self.read_bits(count)? as u16)
+        }
     }
 
     #[inline]
     pub fn read_u8(&mut self) -> io::Result<u8> {
         self.read_bits(8)
+    }
+
+    #[inline]
+    pub fn read_u16(&mut self) -> io::Result<u16> {
+        self.read_bits_u16(16)
     }
 
     pub fn read_full_bytes(&mut self, buf: &mut [u8]) -> io::Result<()> {
@@ -194,13 +213,31 @@ impl<W: Write> BitWriter<W> {
     }
 
     #[inline]
-    pub fn write_bool(&mut self, v: bool) -> io::Result<()> {
-        self.write_bits(v as u8, 1)
+    pub fn write_bits_u16(&mut self, value: u16, count: u8) -> io::Result<()> {
+        if count > 16 {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "bit count must be between 1 and 16",
+            ));
+        }
+
+        if count > 8 {
+            let overflow = count - 8;
+            self.write_bits((value >> 8) as u8, overflow)?;
+            self.write_bits((value & 0xFF) as u8, 8)
+        } else {
+            self.write_bits(value as u8, count)
+        }
     }
 
     #[inline]
     pub fn write_u8(&mut self, v: u8) -> io::Result<()> {
         self.write_bits(v, 8)
+    }
+
+    #[inline]
+    pub fn write_u16(&mut self, v: u16) -> io::Result<()> {
+        self.write_bits_u16(v, 16)
     }
 
     pub fn write_full_bytes(&mut self, bytes: &[u8]) -> io::Result<()> {
@@ -275,6 +312,18 @@ impl BitDecode for u8 {
     }
 }
 
+impl BitEncode for u16 {
+    fn encode<W: Write>(&self, w: &mut BitWriter<W>) -> io::Result<()> {
+        w.write_u16(*self)
+    }
+}
+
+impl BitDecode for u16 {
+    fn decode(r: &mut BitReader) -> io::Result<Self> {
+        r.read_u16()
+    }
+}
+
 macro_rules! impl_bit_codec {
     ($($ty:ty),*) => {
         $(
@@ -295,17 +344,17 @@ macro_rules! impl_bit_codec {
     };
 }
 
-impl_bit_codec!(u16, u32, u64, u128, i8, i16, i32, i64, i128, f32, f64);
+impl_bit_codec!(u32, u64, u128, i8, i16, i32, i64, i128, f32, f64);
 
 impl BitEncode for bool {
     fn encode<W: Write>(&self, w: &mut BitWriter<W>) -> io::Result<()> {
-        w.write_bool(*self)
+        w.write_bits(*self as u8, 1)
     }
 }
 
 impl BitDecode for bool {
     fn decode(r: &mut BitReader) -> io::Result<Self> {
-        r.read_bool()
+        r.read_bits(1).map(|b| b != 0)
     }
 }
 

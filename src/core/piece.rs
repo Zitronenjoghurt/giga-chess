@@ -70,6 +70,18 @@ impl Piece {
             self.char().to_ascii_lowercase()
         }
     }
+
+    pub fn from_bits(bits: u8) -> Option<Self> {
+        match bits {
+            0b000 => Some(Self::Pawn),
+            0b001 => Some(Self::Knight),
+            0b010 => Some(Self::Bishop),
+            0b011 => Some(Self::Rook),
+            0b100 => Some(Self::Queen),
+            0b101 => Some(Self::King),
+            _ => None,
+        }
+    }
 }
 
 impl FromStr for Piece {
@@ -158,5 +170,17 @@ impl Display for Color {
             Color::White => write!(f, "w"),
             Color::Black => write!(f, "b"),
         }
+    }
+}
+
+impl From<bool> for Color {
+    fn from(b: bool) -> Self {
+        if !b { Color::White } else { Color::Black }
+    }
+}
+
+impl From<Color> for bool {
+    fn from(c: Color) -> Self {
+        c != Color::White
     }
 }

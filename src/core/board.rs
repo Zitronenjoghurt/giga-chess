@@ -145,6 +145,10 @@ impl ChessBoard {
         self.0[piece as usize + (color as usize * 6)]
     }
 
+    pub fn pieces_bb(&self, piece: Piece) -> BitBoard {
+        self.0[piece as usize] | self.0[piece as usize + 6]
+    }
+
     /// Retrieve a mutable reference to the [`BitBoard`] of the respective piece and color.
     ///
     /// # Arguments
@@ -213,6 +217,18 @@ impl ChessBoard {
     /// ```
     pub fn occupied_bb(&self) -> BitBoard {
         self.color_bb(Color::White) | self.color_bb(Color::Black)
+    }
+
+    pub fn color_piece_count(&self, color: Color) -> u8 {
+        self.color_bb(color).count_set()
+    }
+
+    pub fn piece_count(&self) -> u8 {
+        self.occupied_bb().count_set()
+    }
+
+    pub fn count_pawns(&self) -> u8 {
+        self.pieces_bb(Piece::Pawn).count_set()
     }
 
     /// Place a piece of a certain color on the specified square.
@@ -403,6 +419,24 @@ impl ChessBoard {
                 Square::iter_top_bottom().map(move |square| (square, self.piece_at(square))),
             ),
         }
+    }
+
+    pub fn iter_all_pieces_top_bottom(
+        &self,
+    ) -> impl Iterator<Item = (Square, (Piece, Color))> + '_ {
+        self.iter_top_bottom(Color::White)
+            .filter_map(|(square, piece_color)| {
+                piece_color.map(|(piece, color)| (square, (piece, color)))
+            })
+    }
+
+    pub fn iter_all_pieces_bottom_top(
+        &self,
+    ) -> impl Iterator<Item = (Square, (Piece, Color))> + '_ {
+        self.iter_bottom_top(Color::White)
+            .filter_map(|(square, piece_color)| {
+                piece_color.map(|(piece, color)| (square, (piece, color)))
+            })
     }
 
     pub fn pretty_grid(&self) -> String {
