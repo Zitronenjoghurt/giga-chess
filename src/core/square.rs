@@ -388,7 +388,7 @@ impl FromStr for Square {
             return Err(FenError::InvalidSquare(s.to_string()));
         }
 
-        let file_char = s.chars().nth(0).unwrap().to_ascii_uppercase();
+        let file_char = s.chars().nth(0).unwrap().to_ascii_lowercase();
         let rank_char = s.chars().nth(1).unwrap();
 
         let file: u8 = match file_char {
