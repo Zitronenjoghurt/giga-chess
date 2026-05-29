@@ -397,7 +397,7 @@ mod tests {
 
         let mut r = BitReader::new(&buf);
         assert!(r.read::<bool>().unwrap());
-        assert!(r.read::<bool>().unwrap());
+        assert!(!r.read::<bool>().unwrap());
         assert!(r.read::<bool>().unwrap());
     }
 
