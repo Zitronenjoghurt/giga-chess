@@ -1,6 +1,8 @@
 use crate::core::square::*;
 use crate::error::{FenError, FenResult};
+use crate::storage::io::{BitDecode, BitEncode, BitReader, BitWriter};
 use std::fmt::Display;
+use std::io::{Read, Write};
 use std::str::FromStr;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -106,6 +108,21 @@ impl Display for Piece {
     }
 }
 
+impl BitEncode for Piece {
+    fn encode<W: Write>(&self, w: &mut BitWriter<W>) -> std::io::Result<()> {
+        w.write_bits(*self as u8, 3)
+    }
+}
+
+impl BitDecode for Piece {
+    fn decode<R: Read>(r: &mut BitReader<R>) -> std::io::Result<Self> {
+        Ok(Self::from_bits(r.read_bits(3)?).ok_or(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "Invalid piece bits",
+        ))?)
+    }
+}
+
 #[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -182,5 +199,17 @@ impl From<bool> for Color {
 impl From<Color> for bool {
     fn from(c: Color) -> Self {
         c != Color::White
+    }
+}
+
+impl BitEncode for Color {
+    fn encode<W: Write>(&self, w: &mut BitWriter<W>) -> std::io::Result<()> {
+        w.write(&bool::from(*self))
+    }
+}
+
+impl BitDecode for Color {
+    fn decode<R: Read>(r: &mut BitReader<R>) -> std::io::Result<Self> {
+        Ok(Color::from(r.read::<bool>()?))
     }
 }

@@ -1,7 +1,7 @@
 use crate::core::bitboard::BitBoard;
 use crate::prelude::{ChessBoard, Color, Piece, Square, DEFAULT_BOARD};
 use crate::storage::io::{BitDecode, BitEncode, BitReader, BitWriter};
-use std::io::Write;
+use std::io::{Read, Write};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -16,8 +16,8 @@ impl StoredBoardTag {
     pub fn cost(&self, board: &ChessBoard) -> usize {
         match self {
             Self::StartPosition => 0,
-            Self::Sparse => 6 + 10 * board.piece_count() as usize,
-            Self::Dense => 64 + 4 * board.piece_count() as usize,
+            Self::Sparse => 6 + 10 * board.total_piece_count() as usize,
+            Self::Dense => 64 + 4 * board.total_piece_count() as usize,
             Self::DenseHuffman => {
                 let occupied = board.occupied_bb().count_set() as usize;
                 let pawns = board.count_pawns() as usize;
@@ -66,7 +66,7 @@ impl StoredBoard {
     }
 
     pub fn restore(self) -> std::io::Result<ChessBoard> {
-        let mut reader = BitReader::new(&self.0);
+        let mut reader = BitReader::new(self.0.as_slice());
         ChessBoard::decode(&mut reader)
     }
 
@@ -88,32 +88,29 @@ impl BitEncode for ChessBoard {
             StoredBoardTag::Sparse => {
                 w.write_bits(piece_count, 6)?;
                 for (square, (piece, color)) in self.iter_all_pieces_bottom_top() {
-                    w.write_bits(square.index(), 6)?;
-                    w.write(&(bool::from(color)))?;
-                    w.write_bits(piece as u8, 3)?;
+                    w.write(&square)?;
+                    w.write(&color)?;
+                    w.write(&piece)?;
                 }
             }
             StoredBoardTag::Dense => {
-                w.write(&occupied.value())?;
+                w.write(&occupied)?;
                 for (piece, color) in self
                     .iter_all_pieces_bottom_top()
                     .map(|(_, piece_color)| piece_color)
                 {
-                    w.write(&(bool::from(color)))?;
-                    w.write_bits(piece as u8, 3)?;
+                    w.write(&color)?;
+                    w.write(&piece)?;
                 }
             }
             StoredBoardTag::DenseHuffman => {
                 for (_, opt_piece_color) in self.iter_bottom_top(Color::White) {
                     if let Some((piece, color)) = opt_piece_color {
                         if piece == Piece::Pawn {
-                            if color == Color::White {
-                                w.write_bits(0b100, 3)?;
-                            } else {
-                                w.write_bits(0b101, 3)?;
-                            }
+                            w.write_bits(0b10u8, 2)?;
+                            w.write(&color)?;
                         } else {
-                            let piece_bits = match piece {
+                            let piece_bits: u8 = match piece {
                                 Piece::Knight => 0b11_000,
                                 Piece::Bishop => 0b11_001,
                                 Piece::Rook => 0b11_010,
@@ -122,7 +119,7 @@ impl BitEncode for ChessBoard {
                                 _ => unreachable!(),
                             };
                             w.write_bits(piece_bits, 5)?;
-                            w.write(&(bool::from(color)))?;
+                            w.write(&color)?;
                         }
                     } else {
                         w.write(&false)?;
@@ -136,7 +133,7 @@ impl BitEncode for ChessBoard {
 }
 
 impl BitDecode for ChessBoard {
-    fn decode(r: &mut BitReader) -> std::io::Result<Self> {
+    fn decode<R: Read>(r: &mut BitReader<R>) -> std::io::Result<Self> {
         let tag_bits = r.read_bits(2)?;
         let tag = StoredBoardTag::from_bits(tag_bits).ok_or(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
@@ -147,29 +144,21 @@ impl BitDecode for ChessBoard {
             StoredBoardTag::StartPosition => DEFAULT_BOARD,
             StoredBoardTag::Sparse => {
                 let mut board = ChessBoard::empty();
-                let piece_count = r.read_bits(6)?;
+                let piece_count: u8 = r.read_bits(6)?;
                 for _ in 0..piece_count {
-                    let square = Square::new(r.read_bits(6)?);
-                    let color = Color::from(r.read::<bool>()?);
-                    let piece_bits = r.read_bits(3)?;
-                    let piece = Piece::from_bits(piece_bits).ok_or(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        format!("Invalid piece bits: {piece_bits:#3b}"),
-                    ))?;
+                    let square = r.read()?;
+                    let color = r.read()?;
+                    let piece = r.read()?;
                     board.set(piece, color, square);
                 }
                 board
             }
             StoredBoardTag::Dense => {
                 let mut board = ChessBoard::empty();
-                let occupied = BitBoard::new(r.read()?);
+                let occupied: BitBoard = r.read()?;
                 for square in occupied {
-                    let color = Color::from(r.read::<bool>()?);
-                    let piece_bits = r.read_bits(3)?;
-                    let piece = Piece::from_bits(piece_bits).ok_or(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        format!("Invalid piece bits: {piece_bits:#3b}"),
-                    ))?;
+                    let color = r.read()?;
+                    let piece = r.read()?;
                     board.set(piece, color, square);
                 }
                 board
@@ -183,7 +172,7 @@ impl BitDecode for ChessBoard {
                     }
                     let is_not_pawn = r.read::<bool>()?;
                     if is_not_pawn {
-                        let piece_bits = r.read_bits(3)?;
+                        let piece_bits: u8 = r.read_bits(3)?;
                         let piece = match piece_bits {
                             0b000 => Piece::Knight,
                             0b001 => Piece::Bishop,
@@ -197,10 +186,10 @@ impl BitDecode for ChessBoard {
                                 ));
                             }
                         };
-                        let color = Color::from(r.read::<bool>()?);
+                        let color = r.read()?;
                         board.set(piece, color, sq);
                     } else {
-                        let color = Color::from(r.read::<bool>()?);
+                        let color = r.read()?;
                         board.set(Piece::Pawn, color, sq);
                     }
                 }
@@ -241,7 +230,7 @@ mod tests {
         original.set(Piece::Rook, Color::White, A1);
         original.set(Piece::King, Color::Black, E8);
 
-        assert!(original.piece_count() < 10, "Board should be sparse");
+        assert!(original.total_piece_count() < 10, "Board should be sparse");
 
         let stored = StoredBoard::new(&original).expect("Failed to encode sparse board");
         assert_eq!(stored.tag(), Some(StoredBoardTag::Sparse));
@@ -274,7 +263,7 @@ mod tests {
         let fen_str = "rnbqkbnr/8/8/8/8/8/8/RNBQKBNR";
         let original = ChessBoard::from_str(fen_str).expect("Failed to parse FEN");
 
-        assert!(original.piece_count() >= 10, "Board should be dense");
+        assert!(original.total_piece_count() >= 10, "Board should be dense");
 
         let stored = StoredBoard::new(&original).expect("Failed to encode dense board");
         assert_eq!(stored.tag(), Some(StoredBoardTag::Dense));

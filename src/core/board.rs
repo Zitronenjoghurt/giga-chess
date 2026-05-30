@@ -219,11 +219,15 @@ impl ChessBoard {
         self.color_bb(Color::White) | self.color_bb(Color::Black)
     }
 
+    pub fn specific_piece_count(&self, piece: Piece, color: Color) -> u8 {
+        self.piece_bb(piece, color).count_set()
+    }
+
     pub fn color_piece_count(&self, color: Color) -> u8 {
         self.color_bb(color).count_set()
     }
 
-    pub fn piece_count(&self) -> u8 {
+    pub fn total_piece_count(&self) -> u8 {
         self.occupied_bb().count_set()
     }
 

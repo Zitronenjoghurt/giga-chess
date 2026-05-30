@@ -2,6 +2,7 @@ use crate::core::square::*;
 use crate::error::{FenError, FenResult};
 use crate::storage::io::{BitDecode, BitEncode, BitReader};
 use std::fmt::Display;
+use std::io::Read;
 use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
@@ -142,7 +143,7 @@ impl BitEncode for CastlingRights {
 }
 
 impl BitDecode for CastlingRights {
-    fn decode(r: &mut BitReader) -> std::io::Result<Self> {
+    fn decode<R: Read>(r: &mut BitReader<R>) -> std::io::Result<Self> {
         let bits = r.read_bits(4)?;
         Ok(CastlingRights::from_bits(bits))
     }

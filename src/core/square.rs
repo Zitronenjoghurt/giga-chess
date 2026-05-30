@@ -1,6 +1,8 @@
 use crate::core::piece::Color;
 use crate::error::{FenError, FenResult};
+use crate::storage::io::{BitDecode, BitEncode, BitReader, BitWriter};
 use std::fmt::Display;
+use std::io::{Read, Write};
 use std::str::FromStr;
 
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
@@ -424,5 +426,18 @@ impl FromStr for Square {
         };
 
         Ok(Square::from_file_rank(file, rank))
+    }
+}
+
+impl BitEncode for Square {
+    fn encode<W: Write>(&self, w: &mut BitWriter<W>) -> std::io::Result<()> {
+        w.write_bits(self.index(), 6)
+    }
+}
+
+impl BitDecode for Square {
+    fn decode<R: Read>(r: &mut BitReader<R>) -> std::io::Result<Self> {
+        let index = r.read_bits(6)?;
+        Ok(Square::new(index))
     }
 }

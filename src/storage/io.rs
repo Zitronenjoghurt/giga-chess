@@ -1,18 +1,18 @@
 use std::io::{self, Read, Write};
 
-pub struct BitReader<'a> {
-    bytes: &'a [u8],
-    byte_pos: usize,
-    bit_offset: u8,
+pub struct BitReader<R: Read> {
+    inner: R,
+    buf: u8,
+    bits_left: u8,
 }
 
-impl<'a> BitReader<'a> {
+impl<R: Read> BitReader<R> {
     #[inline]
-    pub fn new(bytes: &'a [u8]) -> Self {
+    pub fn new(inner: R) -> Self {
         Self {
-            bytes,
-            byte_pos: 0,
-            bit_offset: 0,
+            inner,
+            buf: 0,
+            bits_left: 0,
         }
     }
 
@@ -22,137 +22,56 @@ impl<'a> BitReader<'a> {
     }
 
     #[inline]
-    pub fn read_bits(&mut self, count: u8) -> io::Result<u8> {
-        if !(1..=8).contains(&count) {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "bit count must be between 1 and 8",
-            ));
+    pub fn read_bits<T: BitInt>(&mut self, count: u32) -> io::Result<T> {
+        if count == 0 || count > T::BITS {
+            return Err(io::Error::new(io::ErrorKind::InvalidInput, "bad bit count"));
         }
-
-        if self.byte_pos >= self.bytes.len() {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "Unexpected end of input",
-            ));
+        let mut acc = T::ZERO;
+        let mut remaining = count;
+        while remaining > 0 {
+            if self.bits_left == 0 {
+                let mut b = [0u8];
+                self.inner.read_exact(&mut b)?;
+                self.buf = b[0];
+                self.bits_left = 8;
+            }
+            let chunk = remaining.min(self.bits_left as u32);
+            let lo_shift = self.bits_left as u32 - chunk;
+            let mask: u8 = if chunk == 8 { 0xFF } else { (1u8 << chunk) - 1 };
+            let bits = (self.buf >> lo_shift) & mask;
+            remaining -= chunk;
+            acc = acc.deposit_byte(bits, remaining);
+            self.bits_left -= chunk as u8;
         }
-
-        let bits_left = 8 - self.bit_offset;
-        let to_read = count.min(bits_left);
-        let shift = bits_left - to_read;
-        let mask = ((1u16 << to_read) - 1) as u8;
-        let bits = (self.bytes[self.byte_pos] >> shift) & mask;
-
-        self.bit_offset += to_read;
-        if self.bit_offset >= 8 {
-            self.bit_offset = 0;
-            self.byte_pos += 1;
-        }
-
-        if to_read < count {
-            let rest = count - to_read;
-            let next = self.read_bits(rest)?;
-            Ok((bits << rest) | next)
-        } else {
-            Ok(bits)
-        }
+        Ok(acc)
     }
 
-    #[inline]
-    pub fn read_bits_u16(&mut self, count: u8) -> io::Result<u16> {
-        if count == 0 || count > 16 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "bit count must be between 1 and 16",
-            ));
-        }
-
-        if count > 8 {
-            let overflow = count - 8;
-            let high = self.read_bits(overflow)? as u16;
-            let low = self.read_bits(8)? as u16;
-            Ok((high << 8) | low)
-        } else {
-            Ok(self.read_bits(count)? as u16)
-        }
-    }
-
-    #[inline]
-    pub fn read_u8(&mut self) -> io::Result<u8> {
-        self.read_bits(8)
-    }
-
-    #[inline]
-    pub fn read_u16(&mut self) -> io::Result<u16> {
-        self.read_bits_u16(16)
-    }
-
-    pub fn read_full_bytes(&mut self, buf: &mut [u8]) -> io::Result<()> {
+    pub fn read_full_bytes(&mut self, out: &mut [u8]) -> io::Result<()> {
         if self.is_aligned() {
-            let end = self.byte_pos + buf.len();
-            if end > self.bytes.len() {
-                return Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "Unexpected end of input",
-                ));
-            }
-            buf.copy_from_slice(&self.bytes[self.byte_pos..end]);
-            self.byte_pos = end;
+            self.inner.read_exact(out)
         } else {
-            for byte in buf.iter_mut() {
-                *byte = self.read_u8()?;
+            for byte in out.iter_mut() {
+                *byte = self.read_bits(8)?;
             }
+            Ok(())
         }
-        Ok(())
     }
 
-    #[inline]
-    pub fn position(&self) -> usize {
-        self.byte_pos * 8 + self.bit_offset as usize
-    }
-
-    #[inline]
-    pub fn remaining_bits(&self) -> usize {
-        (self.bytes.len() - self.byte_pos) * 8 - self.bit_offset as usize
-    }
-
-    #[inline]
     pub fn is_aligned(&self) -> bool {
-        self.bit_offset == 0
+        self.bits_left == 0
     }
 
-    #[inline]
     pub fn align(&mut self) {
-        if self.bit_offset != 0 {
-            self.bit_offset = 0;
-            self.byte_pos += 1;
-        }
-    }
-
-    pub fn skip(&mut self, count: usize) -> io::Result<()> {
-        if count > self.remaining_bits() {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "Unexpected end of input",
-            ));
-        }
-        let total = self.bit_offset as usize + count;
-        self.byte_pos += total / 8;
-        self.bit_offset = (total % 8) as u8;
-        Ok(())
+        self.bits_left = 0;
     }
 }
 
-impl<'a> Read for BitReader<'a> {
+impl<R: Read> Read for BitReader<R> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         if !self.is_aligned() {
             return Ok(0);
         }
-        let avail = self.bytes.len() - self.byte_pos;
-        let n = buf.len().min(avail);
-        buf[..n].copy_from_slice(&self.bytes[self.byte_pos..self.byte_pos + n]);
-        self.byte_pos += n;
-        Ok(n)
+        self.inner.read(buf)
     }
 }
 
@@ -173,71 +92,32 @@ impl<W: Write> BitWriter<W> {
     }
 
     #[inline]
-    pub fn write<T: BitEncode>(&mut self, v: &T) -> io::Result<()> {
+    pub fn write<T: BitEncode + ?Sized>(&mut self, v: &T) -> io::Result<()> {
         v.encode(self)
     }
 
     #[inline]
-    pub fn write_bits(&mut self, value: u8, count: u8) -> io::Result<()> {
-        if !(1..=8).contains(&count) {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "bit count must be between 1 and 8",
-            ));
+    pub fn write_bits<T: BitInt>(&mut self, value: T, count: u32) -> io::Result<()> {
+        if count == 0 || count > T::BITS {
+            return Err(io::Error::new(io::ErrorKind::InvalidInput, "bad bit count"));
         }
-
-        let space = 8 - self.bit_count;
-        let to_write = count.min(space);
-        let remaining = count - to_write;
-
-        let bits = if remaining > 0 {
-            value >> remaining
-        } else {
-            value
-        };
-        let mask = ((1u16 << to_write) - 1) as u8;
-        self.current_byte |= (bits & mask) << (space - to_write);
-        self.bit_count += to_write;
-
-        if self.bit_count == 8 {
-            self.inner.write_all(&[self.current_byte])?;
-            self.current_byte = 0;
-            self.bit_count = 0;
+        let mut remaining = count;
+        while remaining > 0 {
+            let space = 8 - self.bit_count as u32;
+            let chunk = remaining.min(space);
+            let shift = remaining - chunk;
+            let mask: u8 = if chunk == 8 { 0xFF } else { (1u8 << chunk) - 1 };
+            let bits = value.extract_byte(shift) & mask;
+            self.current_byte |= bits << (space - chunk);
+            self.bit_count += chunk as u8;
+            if self.bit_count == 8 {
+                self.inner.write_all(&[self.current_byte])?;
+                self.current_byte = 0;
+                self.bit_count = 0;
+            }
+            remaining -= chunk;
         }
-
-        if remaining > 0 {
-            self.write_bits(value, remaining)?;
-        }
-
         Ok(())
-    }
-
-    #[inline]
-    pub fn write_bits_u16(&mut self, value: u16, count: u8) -> io::Result<()> {
-        if count > 16 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "bit count must be between 1 and 16",
-            ));
-        }
-
-        if count > 8 {
-            let overflow = count - 8;
-            self.write_bits((value >> 8) as u8, overflow)?;
-            self.write_bits((value & 0xFF) as u8, 8)
-        } else {
-            self.write_bits(value as u8, count)
-        }
-    }
-
-    #[inline]
-    pub fn write_u8(&mut self, v: u8) -> io::Result<()> {
-        self.write_bits(v, 8)
-    }
-
-    #[inline]
-    pub fn write_u16(&mut self, v: u16) -> io::Result<()> {
-        self.write_bits_u16(v, 16)
     }
 
     pub fn write_full_bytes(&mut self, bytes: &[u8]) -> io::Result<()> {
@@ -245,7 +125,7 @@ impl<W: Write> BitWriter<W> {
             self.inner.write_all(bytes)?;
         } else {
             for &b in bytes {
-                self.write_u8(b)?;
+                self.write_bits(b, 8)?;
             }
         }
         Ok(())
@@ -297,44 +177,46 @@ pub trait BitEncode {
 }
 
 pub trait BitDecode: Sized {
-    fn decode(r: &mut BitReader) -> io::Result<Self>;
+    fn decode<R: Read>(r: &mut BitReader<R>) -> io::Result<Self>;
 }
 
-impl BitEncode for u8 {
-    fn encode<W: Write>(&self, w: &mut BitWriter<W>) -> io::Result<()> {
-        w.write_u8(*self)
-    }
+pub trait BitInt: Copy {
+    const BITS: u32;
+    const ZERO: Self;
+    /// Low 8 bits of `self >> shift`. Caller guarantees `shift < Self::BITS`.
+    fn extract_byte(self, shift: u32) -> u8;
+    /// `self | ((bits as Self) << shift)`. Caller guarantees `shift < Self::BITS`.
+    fn deposit_byte(self, bits: u8, shift: u32) -> Self;
 }
 
-impl BitDecode for u8 {
-    fn decode(r: &mut BitReader) -> io::Result<Self> {
-        r.read_u8()
-    }
+macro_rules! impl_bit_int {
+    ($($t:ty),*) => {$(
+        impl BitInt for $t {
+            const BITS: u32 = <$t>::BITS;
+            const ZERO: Self = 0;
+            #[inline(always)]
+            fn extract_byte(self, shift: u32) -> u8 { (self >> shift) as u8 }
+            #[inline(always)]
+            fn deposit_byte(self, bits: u8, shift: u32) -> Self {
+                self | ((bits as $t) << shift)
+            }
+        }
+    )*};
 }
-
-impl BitEncode for u16 {
-    fn encode<W: Write>(&self, w: &mut BitWriter<W>) -> io::Result<()> {
-        w.write_u16(*self)
-    }
-}
-
-impl BitDecode for u16 {
-    fn decode(r: &mut BitReader) -> io::Result<Self> {
-        r.read_u16()
-    }
-}
+impl_bit_int!(u8, u16, u32, u64, u128, usize);
 
 macro_rules! impl_bit_codec {
     ($($ty:ty),*) => {
         $(
             impl BitEncode for $ty {
-                fn encode<W: Write>(&self, w: &mut BitWriter<W>) -> io::Result<()> {
+                #[inline]
+                fn encode<W: std::io::Write>(&self, w: &mut BitWriter<W>) -> io::Result<()> {
                     w.write_full_bytes(&self.to_le_bytes())
                 }
             }
-
             impl BitDecode for $ty {
-                fn decode(r: &mut BitReader) -> io::Result<Self> {
+                #[inline]
+                fn decode<R: std::io::Read>(r: &mut BitReader<R>) -> io::Result<Self> {
                     let mut buf = [0u8; std::mem::size_of::<$ty>()];
                     r.read_full_bytes(&mut buf)?;
                     Ok(<$ty>::from_le_bytes(buf))
@@ -344,7 +226,74 @@ macro_rules! impl_bit_codec {
     };
 }
 
-impl_bit_codec!(u32, u64, u128, i8, i16, i32, i64, i128, f32, f64);
+impl_bit_codec!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, f32, f64);
+
+pub trait BitVecHeader {
+    fn write_len<W: Write>(len: usize, w: &mut BitWriter<W>) -> io::Result<()>;
+    fn read_len<R: Read>(r: &mut BitReader<R>) -> io::Result<usize>;
+}
+
+impl<T: BitEncode + BitVecHeader> BitEncode for [T] {
+    fn encode<W: Write>(&self, w: &mut BitWriter<W>) -> io::Result<()> {
+        T::write_len(self.len(), w)?;
+        for item in self {
+            item.encode(w)?;
+        }
+        Ok(())
+    }
+}
+
+impl<T: BitEncode + BitVecHeader> BitEncode for Vec<T> {
+    fn encode<W: Write>(&self, w: &mut BitWriter<W>) -> io::Result<()> {
+        self.as_slice().encode(w)
+    }
+}
+
+impl<T: BitDecode + BitVecHeader> BitDecode for Vec<T> {
+    fn decode<R: Read>(r: &mut BitReader<R>) -> io::Result<Self> {
+        let len = T::read_len(r)?;
+        (0..len).map(|_| T::decode(r)).collect()
+    }
+}
+
+#[macro_export]
+macro_rules! impl_bit_vec_header {
+    ($header_ty:ty, $($ty:ty),*) => {
+        $(
+            impl $crate::storage::io::BitVecHeader for $ty {
+                fn write_len<W: std::io::Write>(len: usize, w: &mut BitWriter<W>) -> std::io::Result<()> {
+                    (len as $header_ty).encode(w)
+                }
+                fn read_len<R: std::io::Read>(r: &mut BitReader<R>) -> std::io::Result<usize> {
+                    Ok(<$header_ty>::decode(r)? as usize)
+                }
+            }
+        )*
+    };
+}
+impl_bit_vec_header!(
+    u32, u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, f32, f64, String
+);
+
+impl<T: BitEncode> BitEncode for Option<T> {
+    fn encode<W: Write>(&self, w: &mut BitWriter<W>) -> io::Result<()> {
+        w.write(&self.is_some())?;
+        if let Some(v) = self {
+            v.encode(w)?;
+        }
+        Ok(())
+    }
+}
+
+impl<T: BitDecode> BitDecode for Option<T> {
+    fn decode<R: Read>(r: &mut BitReader<R>) -> io::Result<Self> {
+        if r.read::<bool>()? {
+            Ok(Some(T::decode(r)?))
+        } else {
+            Ok(None)
+        }
+    }
+}
 
 impl BitEncode for bool {
     fn encode<W: Write>(&self, w: &mut BitWriter<W>) -> io::Result<()> {
@@ -353,8 +302,8 @@ impl BitEncode for bool {
 }
 
 impl BitDecode for bool {
-    fn decode(r: &mut BitReader) -> io::Result<Self> {
-        r.read_bits(1).map(|b| b != 0)
+    fn decode<R: Read>(r: &mut BitReader<R>) -> io::Result<Self> {
+        r.read_bits::<u8>(1).map(|b| b != 0)
     }
 }
 
@@ -366,7 +315,7 @@ impl BitEncode for String {
 }
 
 impl BitDecode for String {
-    fn decode(r: &mut BitReader) -> io::Result<Self> {
+    fn decode<R: Read>(r: &mut BitReader<R>) -> io::Result<Self> {
         let len = u32::decode(r)? as usize;
         let mut buf = vec![0u8; len];
         r.read_full_bytes(&mut buf)?;
@@ -378,33 +327,6 @@ impl BitEncode for &str {
     fn encode<W: Write>(&self, w: &mut BitWriter<W>) -> io::Result<()> {
         (self.len() as u32).encode(w)?;
         w.write_full_bytes(self.as_bytes())
-    }
-}
-
-impl<T: BitEncode> BitEncode for Vec<T> {
-    fn encode<W: Write>(&self, w: &mut BitWriter<W>) -> io::Result<()> {
-        (self.len() as u32).encode(w)?;
-        for item in self {
-            item.encode(w)?;
-        }
-        Ok(())
-    }
-}
-
-impl<T: BitDecode> BitDecode for Vec<T> {
-    fn decode(r: &mut BitReader) -> io::Result<Self> {
-        let len = u32::decode(r)? as usize;
-        (0..len).map(|_| T::decode(r)).collect()
-    }
-}
-
-impl<T: BitEncode> BitEncode for &[T] {
-    fn encode<W: Write>(&self, w: &mut BitWriter<W>) -> io::Result<()> {
-        (self.len() as u32).encode(w)?;
-        for item in *self {
-            item.encode(w)?;
-        }
-        Ok(())
     }
 }
 
@@ -425,7 +347,7 @@ mod tests {
             w.flush().unwrap();
         }
 
-        let mut r = BitReader::new(&buf);
+        let mut r = BitReader::new(buf.as_slice());
         assert_eq!(r.read::<u8>().unwrap(), 42);
         assert_eq!(r.read::<u16>().unwrap(), 0xABCD);
         assert_eq!(r.read::<u32>().unwrap(), 0xDEAD_BEEF);
@@ -444,7 +366,7 @@ mod tests {
             w.flush().unwrap();
         }
 
-        let mut r = BitReader::new(&buf);
+        let mut r = BitReader::new(buf.as_slice());
         assert!(r.read::<bool>().unwrap());
         assert!(!r.read::<bool>().unwrap());
         assert!(r.read::<bool>().unwrap());
@@ -460,7 +382,7 @@ mod tests {
             w.flush().unwrap();
         }
 
-        let mut r = BitReader::new(&buf);
+        let mut r = BitReader::new(buf.as_slice());
         assert_eq!(r.read::<String>().unwrap(), "hello");
         assert_eq!(r.read::<String>().unwrap(), "world");
     }
@@ -476,7 +398,7 @@ mod tests {
             w.flush().unwrap();
         }
 
-        let mut r = BitReader::new(&buf);
+        let mut r = BitReader::new(buf.as_slice());
         assert_eq!(r.read::<Vec<u32>>().unwrap(), vec![1, 2, 3, 4, 5]);
         assert_eq!(
             r.read::<Vec<String>>().unwrap(),
@@ -489,15 +411,15 @@ mod tests {
         let mut buf = Vec::new();
         {
             let mut w = BitWriter::new(&mut buf);
-            w.write_bits(0b110, 3).unwrap();
+            w.write_bits(0b110u32, 3).unwrap();
             w.write(&true).unwrap();
             w.write(&0xFFu8).unwrap();
             w.write(&1024u16).unwrap();
             w.flush().unwrap();
         }
 
-        let mut r = BitReader::new(&buf);
-        assert_eq!(r.read_bits(3).unwrap(), 0b110);
+        let mut r = BitReader::new(buf.as_slice());
+        assert_eq!(r.read_bits::<u8>(3).unwrap(), 0b110);
         assert!(r.read::<bool>().unwrap());
         assert_eq!(r.read::<u8>().unwrap(), 0xFF);
         assert_eq!(r.read::<u16>().unwrap(), 1024);
@@ -508,15 +430,15 @@ mod tests {
         let mut buf = Vec::new();
         {
             let mut w = BitWriter::new(&mut buf);
-            w.write_bits(0xA, 4).unwrap();
-            w.write_bits(0x5, 4).unwrap();
+            w.write_bits(0xAu32, 4).unwrap();
+            w.write_bits(0x5u32, 4).unwrap();
             w.flush().unwrap();
         }
         assert_eq!(buf, [0xA5]);
 
-        let mut r = BitReader::new(&buf);
-        assert_eq!(r.read_bits(4).unwrap(), 0xA);
-        assert_eq!(r.read_bits(4).unwrap(), 0x5);
+        let mut r = BitReader::new(buf.as_slice());
+        assert_eq!(r.read_bits::<u8>(4).unwrap(), 0xA);
+        assert_eq!(r.read_bits::<u8>(4).unwrap(), 0x5);
     }
 
     #[test]
@@ -529,7 +451,7 @@ mod tests {
             w.flush().unwrap();
         }
 
-        let mut r = BitReader::new(&buf);
+        let mut r = BitReader::new(buf.as_slice());
         let mut out = vec![0u8; original.len()];
         r.read_full_bytes(&mut out).unwrap();
         assert_eq!(&out, original);
@@ -540,7 +462,7 @@ mod tests {
         let mut buf = Vec::new();
         {
             let mut w = BitWriter::new(&mut buf);
-            w.write_bits(0b111, 3).unwrap();
+            w.write_bits(0b111u8, 3).unwrap();
             w.align().unwrap();
             w.write(&0xABu8).unwrap();
             w.flush().unwrap();
@@ -549,33 +471,12 @@ mod tests {
     }
 
     #[test]
-    fn position_and_remaining() {
-        let data = [0xFF, 0xFF];
-        let mut r = BitReader::new(&data);
-        assert_eq!(r.position(), 0);
-        assert_eq!(r.remaining_bits(), 16);
-        r.read_bits(3).unwrap();
-        assert_eq!(r.position(), 3);
-        assert_eq!(r.remaining_bits(), 13);
-    }
-
-    #[test]
-    fn skip_bits() {
-        let data = [0b1111_0000, 0b1010_1010];
-        let mut r = BitReader::new(&data);
-        r.skip(4).unwrap();
-        assert_eq!(r.read_bits(4).unwrap(), 0b0000);
-        r.skip(4).unwrap();
-        assert_eq!(r.read_bits(4).unwrap(), 0b1010);
-    }
-
-    #[test]
     fn std_read_trait() {
-        let data = [0x01, 0x02, 0x03, 0x04];
-        let mut r = BitReader::new(&data);
+        let data: &[u8] = &[0x01, 0x02, 0x03, 0x04];
+        let mut r = BitReader::new(data);
         let mut buf = [0u8; 4];
         r.read_exact(&mut buf).unwrap();
-        assert_eq!(buf, data);
+        assert_eq!(buf, [0x01, 0x02, 0x03, 0x04]);
     }
 
     #[test]
@@ -591,10 +492,10 @@ mod tests {
 
     #[test]
     fn eof_error() {
-        let data = [0xFF];
-        let mut r = BitReader::new(&data);
+        let data: &[u8] = &[0xFF];
+        let mut r = BitReader::new(data);
         r.read::<u8>().unwrap();
-        assert!(r.read_bits(1).is_err());
+        assert!(r.read_bits::<u8>(1).is_err());
     }
 
     #[test]
@@ -607,7 +508,7 @@ mod tests {
             w.flush().unwrap();
         }
 
-        let mut r = BitReader::new(&buf);
+        let mut r = BitReader::new(buf.as_slice());
         assert_eq!(r.read::<f32>().unwrap(), std::f32::consts::PI);
         assert_eq!(r.read::<f64>().unwrap(), std::f64::consts::E);
     }
@@ -618,11 +519,11 @@ mod tests {
         {
             let mut w = BitWriter::new(&mut buf);
             let data: &[u16] = &[10, 20, 30];
-            w.write(&data).unwrap();
+            w.write(data).unwrap();
             w.flush().unwrap();
         }
 
-        let mut r = BitReader::new(&buf);
+        let mut r = BitReader::new(buf.as_slice());
         assert_eq!(r.read::<Vec<u16>>().unwrap(), vec![10, 20, 30]);
     }
 }

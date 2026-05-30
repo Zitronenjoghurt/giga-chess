@@ -7,6 +7,8 @@ pub enum FenError {
     InvalidChessBoard(String),
     #[error("Invalid color: {0}")]
     InvalidColor(String),
+    #[error("Invalid move: {0}")]
+    InvalidMove(String),
     #[error("Invalid piece: {0}")]
     InvalidPiece(String),
     #[error("Invalid position: {0}")]

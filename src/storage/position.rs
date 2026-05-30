@@ -1,8 +1,8 @@
 use crate::core::position::Position;
 use crate::core::zobrist::ZobristKeys;
-use crate::prelude::{CastlingRights, ChessBoard, Color, Square};
+use crate::prelude::{CastlingRights, ChessBoard, Color};
 use crate::storage::io::{BitDecode, BitEncode, BitReader, BitWriter};
-use std::io::Write;
+use std::io::{Read, Write};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
@@ -21,7 +21,7 @@ impl StoredPosition {
     }
 
     pub fn restore(self) -> std::io::Result<Position> {
-        let mut reader = BitReader::new(&self.0);
+        let mut reader = BitReader::new(self.0.as_slice());
         Position::decode(&mut reader)
     }
 }
@@ -31,37 +31,21 @@ impl BitEncode for Position {
         w.write(&self.board)?;
         w.write(&(bool::from(self.side_to_move)))?;
         w.write(&self.castling_rights)?;
-
-        let has_ep = self.en_passant_square.is_some();
-        w.write(&has_ep)?;
-
-        if let Some(square) = self.en_passant_square {
-            w.write_bits(square.index(), 6)?;
-        }
-
+        w.write(&self.en_passant_square)?;
         w.write_bits(self.half_moves, 8)?;
-        w.write_bits_u16(self.full_moves, 13)?;
-
+        w.write_bits(self.full_moves, 13)?;
         Ok(())
     }
 }
 
 impl BitDecode for Position {
-    fn decode(r: &mut BitReader) -> std::io::Result<Self> {
+    fn decode<R: Read>(r: &mut BitReader<R>) -> std::io::Result<Self> {
         let board = r.read::<ChessBoard>()?;
         let side_to_move = Color::from(r.read::<bool>()?);
         let castling_rights = r.read::<CastlingRights>()?;
-
-        let has_ep = r.read::<bool>()?;
-        let en_passant_square = if has_ep {
-            Some(Square::new(r.read_bits(6)?))
-        } else {
-            None
-        };
-
-        let half_moves = r.read_u8()?;
-        let full_moves = r.read_bits_u16(13)?;
-
+        let en_passant_square = r.read()?;
+        let half_moves = r.read_bits(8)?;
+        let full_moves = r.read_bits(13)?;
         let pos = Self {
             board,
             side_to_move,

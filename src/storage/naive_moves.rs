@@ -1,6 +1,7 @@
-use crate::prelude::Square;
+use crate::impl_bit_vec_header;
+use crate::moves::naive::{NaiveMove, NaivePromotionMove};
 use crate::storage::io::{BitDecode, BitEncode, BitReader, BitWriter};
-use std::io::Write;
+use std::io::{Read, Write};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
@@ -8,7 +9,7 @@ use std::io::Write;
 pub struct StoredNaiveMoves(Vec<u8>);
 
 impl StoredNaiveMoves {
-    pub fn new(moves: &[(Square, Square)]) -> std::io::Result<Self> {
+    pub fn new(moves: &[NaiveMove]) -> std::io::Result<Self> {
         let mut buffer = Vec::new();
         {
             let mut writer = BitWriter::new(&mut buffer);
@@ -18,32 +19,64 @@ impl StoredNaiveMoves {
         Ok(Self(buffer))
     }
 
-    pub fn restore(self) -> std::io::Result<Vec<(Square, Square)>> {
-        let mut reader = BitReader::new(&self.0);
+    pub fn restore(self) -> std::io::Result<Vec<NaiveMove>> {
+        let mut reader = BitReader::new(self.0.as_slice());
         BitDecode::decode(&mut reader)
     }
 }
 
-impl BitEncode for [(Square, Square)] {
+impl BitEncode for NaiveMove {
     fn encode<W: Write>(&self, w: &mut BitWriter<W>) -> std::io::Result<()> {
-        w.write_u16(self.len() as u16)?;
-        for (from, to) in self {
-            w.write_bits(from.index(), 6)?;
-            w.write_bits(to.index(), 6)?;
-        }
+        w.write(&self.from)?;
+        w.write(&self.to)?;
         Ok(())
     }
 }
 
-impl BitDecode for Vec<(Square, Square)> {
-    fn decode(r: &mut BitReader) -> std::io::Result<Self> {
-        let len = r.read_u16()?;
-        let mut moves = Vec::with_capacity(len as usize);
-        for _ in 0..len {
-            let from = Square::new(r.read_bits(6)?);
-            let to = Square::new(r.read_bits(6)?);
-            moves.push((from, to));
-        }
-        Ok(moves)
+impl BitDecode for NaiveMove {
+    fn decode<R: Read>(r: &mut BitReader<R>) -> std::io::Result<Self> {
+        let from = r.read()?;
+        let to = r.read()?;
+        Ok(Self::new(from, to))
     }
 }
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct StoredNaivePromotionMoves(Vec<u8>);
+
+impl StoredNaivePromotionMoves {
+    pub fn new(moves: &[NaivePromotionMove]) -> std::io::Result<Self> {
+        let mut buffer = Vec::new();
+        {
+            let mut writer = BitWriter::new(&mut buffer);
+            moves.encode(&mut writer)?;
+            writer.flush()?;
+        }
+        Ok(Self(buffer))
+    }
+
+    pub fn restore(self) -> std::io::Result<Vec<NaivePromotionMove>> {
+        let mut reader = BitReader::new(self.0.as_slice());
+        BitDecode::decode(&mut reader)
+    }
+}
+
+impl BitEncode for NaivePromotionMove {
+    fn encode<W: Write>(&self, w: &mut BitWriter<W>) -> std::io::Result<()> {
+        w.write(&self.mv)?;
+        w.write(&self.promotion)?;
+        Ok(())
+    }
+}
+
+impl BitDecode for NaivePromotionMove {
+    fn decode<R: Read>(r: &mut BitReader<R>) -> std::io::Result<Self> {
+        let mv = r.read()?;
+        let promotion = r.read()?;
+        Ok(Self { mv, promotion })
+    }
+}
+
+impl_bit_vec_header!(u16, NaiveMove, NaivePromotionMove);

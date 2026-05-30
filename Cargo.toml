@@ -20,3 +20,19 @@ serde = { version = "1.0", features = ["derive"], optional = true }
 strum = { version = "0.28.0", features = ["derive"], optional = true }
 thiserror = "2.0.18"
 zstd = { version = "0.13.3", optional = true }
+
+[dev-dependencies]
+indicatif = "0.18.4"
+ureq = "3.3.0"
+
+[[example]]
+name = "lichess_puzzle_archive"
+required-features = ["lichess-puzzle-parser"]
+
+[[example]]
+name = "lichess_puzzle_stats"
+required-features = ["lichess-puzzle-parser"]
+
+[[example]]
+name = "stockfish"
+required-features = ["stockfish-manager"]

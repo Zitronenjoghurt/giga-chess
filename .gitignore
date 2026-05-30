@@ -13,3 +13,5 @@ target/
 *.pdb
 
 test/
+lichess_db_puzzle.csv.zst
+lichess_puzzle_archive.bin

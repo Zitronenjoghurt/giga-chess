@@ -3,6 +3,7 @@ pub mod board;
 pub mod castling;
 pub mod piece;
 pub mod position;
+pub mod puzzle;
 pub mod square;
 pub mod zobrist;
 
