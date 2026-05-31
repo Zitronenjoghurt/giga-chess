@@ -691,3 +691,250 @@ mod tests {
         assert_eq!(board.piece_at(E2), None);
     }
 }
+
+#[cfg(feature = "bit-codec")]
+mod codec {
+    use crate::core::bitboard::BitBoard;
+    use crate::prelude::{ChessBoard, Color, DEFAULT_BOARD, Piece, Square};
+    use bit_codec::{BitDecode, BitEncode, BitReader, BitWriter};
+    use std::io::{Read, Write};
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, BitEncode, BitDecode)]
+    #[bits(disc = 2)]
+    #[repr(u8)]
+    pub enum BoardTag {
+        StartPosition = 0b00,
+        Sparse = 0b01,
+        Dense = 0b10,
+        DenseHuffman = 0b11,
+    }
+
+    impl BoardTag {
+        pub fn cost(&self, board: &ChessBoard) -> usize {
+            match self {
+                Self::StartPosition => 0,
+                Self::Sparse => 6 + 10 * board.total_piece_count() as usize,
+                Self::Dense => 64 + 4 * board.total_piece_count() as usize,
+                Self::DenseHuffman => {
+                    let occupied = board.occupied_bb().count_set() as usize;
+                    let pawns = board.count_pawns() as usize;
+                    let other = occupied - pawns;
+                    let empty = 64 - occupied;
+                    empty + pawns * 3 + other * 6
+                }
+            }
+        }
+
+        pub fn most_optimal(board: &ChessBoard) -> Self {
+            if *board == DEFAULT_BOARD {
+                return Self::StartPosition;
+            }
+            [Self::Sparse, Self::Dense, Self::DenseHuffman]
+                .into_iter()
+                .min_by_key(|tag| tag.cost(board))
+                .unwrap()
+        }
+
+        pub fn from_bits(bits: u8) -> Option<Self> {
+            match bits {
+                0b00 => Some(Self::StartPosition),
+                0b01 => Some(Self::Sparse),
+                0b10 => Some(Self::Dense),
+                0b11 => Some(Self::DenseHuffman),
+                _ => None,
+            }
+        }
+    }
+
+    impl BitEncode for ChessBoard {
+        fn encode<W: Write>(&self, w: &mut BitWriter<W>) -> std::io::Result<()> {
+            let occupied = self.occupied_bb();
+            let piece_count = occupied.count_set();
+
+            let tag = BoardTag::most_optimal(self);
+            w.write(&tag)?;
+
+            match tag {
+                BoardTag::StartPosition => {}
+                BoardTag::Sparse => {
+                    w.write_bits(piece_count, 6)?;
+                    for (square, (piece, color)) in self.iter_all_pieces_bottom_top() {
+                        w.write(&square)?;
+                        w.write(&color)?;
+                        w.write(&piece)?;
+                    }
+                }
+                BoardTag::Dense => {
+                    w.write(&occupied)?;
+                    for (piece, color) in self
+                        .iter_all_pieces_bottom_top()
+                        .map(|(_, piece_color)| piece_color)
+                    {
+                        w.write(&color)?;
+                        w.write(&piece)?;
+                    }
+                }
+                BoardTag::DenseHuffman => {
+                    for (_, opt_piece_color) in self.iter_bottom_top(Color::White) {
+                        if let Some((piece, color)) = opt_piece_color {
+                            if piece == Piece::Pawn {
+                                w.write_bits(0b10u8, 2)?;
+                                w.write(&color)?;
+                            } else {
+                                let piece_bits: u8 = match piece {
+                                    Piece::Knight => 0b11_000,
+                                    Piece::Bishop => 0b11_001,
+                                    Piece::Rook => 0b11_010,
+                                    Piece::Queen => 0b11_011,
+                                    Piece::King => 0b11_100,
+                                    _ => unreachable!(),
+                                };
+                                w.write_bits(piece_bits, 5)?;
+                                w.write(&color)?;
+                            }
+                        } else {
+                            w.write(&false)?;
+                        }
+                    }
+                }
+            }
+
+            Ok(())
+        }
+    }
+
+    impl BitDecode for ChessBoard {
+        fn decode<R: Read>(r: &mut BitReader<R>) -> std::io::Result<Self> {
+            let tag = r.read()?;
+
+            let board = match tag {
+                BoardTag::StartPosition => DEFAULT_BOARD,
+                BoardTag::Sparse => {
+                    let mut board = ChessBoard::empty();
+                    let piece_count: u8 = r.read_bits(6)?;
+                    for _ in 0..piece_count {
+                        let square = r.read()?;
+                        let color = r.read()?;
+                        let piece = r.read()?;
+                        board.set(piece, color, square);
+                    }
+                    board
+                }
+                BoardTag::Dense => {
+                    let mut board = ChessBoard::empty();
+                    let occupied: BitBoard = r.read()?;
+                    for square in occupied {
+                        let color = r.read()?;
+                        let piece = r.read()?;
+                        board.set(piece, color, square);
+                    }
+                    board
+                }
+                BoardTag::DenseHuffman => {
+                    let mut board = ChessBoard::empty();
+                    for sq in Square::iter_bottom_top() {
+                        let has_piece = r.read::<bool>()?;
+                        if !has_piece {
+                            continue;
+                        }
+                        let is_not_pawn = r.read::<bool>()?;
+                        if is_not_pawn {
+                            let piece_bits: u8 = r.read_bits(3)?;
+                            let piece = match piece_bits {
+                                0b000 => Piece::Knight,
+                                0b001 => Piece::Bishop,
+                                0b010 => Piece::Rook,
+                                0b011 => Piece::Queen,
+                                0b100 => Piece::King,
+                                _ => {
+                                    return Err(std::io::Error::new(
+                                        std::io::ErrorKind::InvalidData,
+                                        format!(
+                                            "Invalid dense huffman piece bits: {piece_bits:#3b}"
+                                        ),
+                                    ));
+                                }
+                            };
+                            let color = r.read()?;
+                            board.set(piece, color, sq);
+                        } else {
+                            let color = r.read()?;
+                            board.set(Piece::Pawn, color, sq);
+                        }
+                    }
+                    board
+                }
+            };
+
+            Ok(board)
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use crate::core::square::*;
+        use std::str::FromStr;
+
+        fn round_trip(board: &ChessBoard) -> ChessBoard {
+            let mut buf = Vec::new();
+            let mut w = BitWriter::new(&mut buf);
+            board.encode(&mut w).expect("Failed to encode");
+            w.flush().expect("Failed to flush");
+            drop(w);
+
+            let mut r = BitReader::new(buf.as_slice());
+            ChessBoard::decode(&mut r).expect("Failed to decode")
+        }
+
+        fn peek_tag(board: &ChessBoard) -> BoardTag {
+            BoardTag::most_optimal(board)
+        }
+
+        #[test]
+        fn test_round_trip_start_position() {
+            let original = ChessBoard::default();
+            assert_eq!(peek_tag(&original), BoardTag::StartPosition);
+            assert_eq!(original, round_trip(&original));
+        }
+
+        #[test]
+        fn test_round_trip_sparse_position() {
+            let mut original = ChessBoard::empty();
+            original.set(Piece::King, Color::White, E1);
+            original.set(Piece::Rook, Color::White, A1);
+            original.set(Piece::King, Color::Black, E8);
+
+            assert!(original.total_piece_count() < 10);
+            assert_eq!(peek_tag(&original), BoardTag::Sparse);
+            assert_eq!(original, round_trip(&original));
+        }
+
+        #[test]
+        fn test_round_trip_empty_position() {
+            let original = ChessBoard::empty();
+            assert_eq!(peek_tag(&original), BoardTag::Sparse);
+            assert_eq!(original, round_trip(&original));
+        }
+
+        #[test]
+        fn test_round_trip_dense_position() {
+            let original =
+                ChessBoard::from_str("rnbqkbnr/8/8/8/8/8/8/RNBQKBNR").expect("Failed to parse FEN");
+
+            assert!(original.total_piece_count() >= 10);
+            assert_eq!(peek_tag(&original), BoardTag::Dense);
+            assert_eq!(original, round_trip(&original));
+        }
+
+        #[test]
+        fn test_round_trip_dense_huffman_position() {
+            let original =
+                ChessBoard::from_str("r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R")
+                    .expect("Failed to parse FEN");
+
+            assert_eq!(peek_tag(&original), BoardTag::DenseHuffman);
+            assert_eq!(original, round_trip(&original));
+        }
+    }
+}

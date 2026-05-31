@@ -264,3 +264,96 @@ mod tests {
         assert_eq!(loaded, pos);
     }
 }
+
+#[cfg(feature = "bit-codec")]
+mod codec {
+    use crate::core::position::Position;
+    use crate::core::zobrist::ZobristKeys;
+    use crate::prelude::{CastlingRights, ChessBoard, Color};
+    use bit_codec::{BitDecode, BitEncode, BitReader, BitWriter};
+    use std::io::{Read, Write};
+
+    impl BitEncode for Position {
+        fn encode<W: Write>(&self, w: &mut BitWriter<W>) -> std::io::Result<()> {
+            w.write(&self.board)?;
+            w.write(&(bool::from(self.side_to_move)))?;
+            w.write(&self.castling_rights)?;
+            w.write(&self.en_passant_square)?;
+            w.write_bits(self.half_moves, 8)?;
+            w.write_bits(self.full_moves, 13)?;
+            Ok(())
+        }
+    }
+
+    impl BitDecode for Position {
+        fn decode<R: Read>(r: &mut BitReader<R>) -> std::io::Result<Self> {
+            let board = r.read::<ChessBoard>()?;
+            let side_to_move = Color::from(r.read::<bool>()?);
+            let castling_rights = r.read::<CastlingRights>()?;
+            let en_passant_square = r.read()?;
+            let half_moves = r.read_bits(8)?;
+            let full_moves = r.read_bits(13)?;
+            let pos = Self {
+                board,
+                side_to_move,
+                castling_rights,
+                en_passant_square,
+                half_moves,
+                full_moves,
+                hash: 0,
+            };
+            Ok(Self {
+                hash: ZobristKeys::full_hash(&pos),
+                ..pos
+            })
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use crate::core::position::Position;
+        use std::str::FromStr;
+
+        fn round_trip(pos: &Position) -> Position {
+            let mut buf = Vec::new();
+            let mut w = BitWriter::new(&mut buf);
+            pos.encode(&mut w).expect("Failed to encode");
+            w.flush().expect("Failed to flush");
+            drop(w);
+
+            let mut r = BitReader::new(buf.as_slice());
+            Position::decode(&mut r).expect("Failed to decode")
+        }
+
+        #[test]
+        fn test_round_trip_start_position() {
+            let original = Position::default();
+            assert_eq!(original, round_trip(&original));
+        }
+
+        #[test]
+        fn test_round_trip_with_en_passant() {
+            let original =
+                Position::from_str("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 2")
+                    .expect("Failed to parse FEN");
+            assert_eq!(original, round_trip(&original));
+        }
+
+        #[test]
+        fn test_round_trip_no_castling_late_game() {
+            let original =
+                Position::from_str("8/8/8/4k3/8/8/4K3/8 w - - 50 45").expect("Failed to parse FEN");
+            assert_eq!(original, round_trip(&original));
+        }
+
+        #[test]
+        fn test_round_trip_complex_middle_game() {
+            let original = Position::from_str(
+                "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2N2N2/PPPP1PPP/R1BQK2R w Kq - 4 17",
+            )
+            .expect("Failed to parse FEN");
+            assert_eq!(original, round_trip(&original));
+        }
+    }
+}

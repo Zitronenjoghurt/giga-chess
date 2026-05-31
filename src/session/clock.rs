@@ -3,6 +3,10 @@ use crate::prelude::Color;
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "bit-codec",
+    derive(bit_codec::BitEncode, bit_codec::BitDecode)
+)]
 pub struct ChessClock {
     /// Remaining time in milliseconds
     remaining_ms: [u64; 2],
@@ -82,6 +86,10 @@ impl ChessClock {
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "bit-codec",
+    derive(bit_codec::BitEncode, bit_codec::BitDecode)
+)]
 pub struct ChessClockConfig {
     pub white_ms: u64,
     pub black_ms: u64,

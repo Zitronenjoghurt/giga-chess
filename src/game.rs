@@ -282,9 +282,9 @@ impl Game {
 #[cfg(test)]
 mod tests {
     use crate::core::position::Position;
+    use crate::game::Game;
     use crate::game::outcome::{DecisiveReason, DrawReason, GameOutcome};
     use crate::game::state::GameState;
-    use crate::game::Game;
     use crate::prelude::*;
     use std::str::FromStr;
 

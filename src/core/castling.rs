@@ -1,13 +1,15 @@
 use crate::core::square::*;
 use crate::error::{FenError, FenResult};
-use crate::storage::io::{BitDecode, BitEncode, BitReader};
 use std::fmt::Display;
-use std::io::Read;
 use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "bit-codec",
+    derive(bit_codec::BitEncode, bit_codec::BitDecode)
+)]
 /// Contains information on who is still allowed to castle and in which direction.
 pub struct CastlingRights {
     /// If white is allowed to castle king side.
@@ -129,22 +131,5 @@ impl Display for CastlingRights {
         } else {
             write!(f, "{fen}")
         }
-    }
-}
-
-impl BitEncode for CastlingRights {
-    fn encode<W: std::io::Write>(
-        &self,
-        w: &mut crate::storage::io::BitWriter<W>,
-    ) -> std::io::Result<()> {
-        w.write_bits(self.bits(), 4)?;
-        Ok(())
-    }
-}
-
-impl BitDecode for CastlingRights {
-    fn decode<R: Read>(r: &mut BitReader<R>) -> std::io::Result<Self> {
-        let bits = r.read_bits(4)?;
-        Ok(CastlingRights::from_bits(bits))
     }
 }

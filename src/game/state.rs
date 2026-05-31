@@ -5,6 +5,11 @@
     feature = "strum",
     derive(strum::EnumIter, strum::EnumIs, strum::EnumCount)
 )]
+#[cfg_attr(
+    feature = "bit-codec",
+    derive(bit_codec::BitEncode, bit_codec::BitDecode)
+)]
+#[cfg_attr(feature = "bit-codec", bits(disc = 3))]
 pub enum GameState {
     Running,
     Checkmate,

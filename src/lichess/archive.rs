@@ -1,7 +1,7 @@
 use crate::core::puzzle::Puzzle;
 use crate::lichess::parser::LichessPuzzleEntry;
 use crate::lichess::puzzle::LichessPuzzle;
-use crate::storage::io::{BitDecode, BitReader, BitWriter};
+use bit_codec::{BitDecode, BitReader, BitWriter};
 
 #[derive(Clone, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]

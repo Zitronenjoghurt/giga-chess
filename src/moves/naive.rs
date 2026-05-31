@@ -5,6 +5,10 @@ use std::str::FromStr;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "bit-codec",
+    derive(bit_codec::BitEncode, bit_codec::BitDecode)
+)]
 pub struct NaiveMove {
     pub from: Square,
     pub to: Square,
@@ -35,6 +39,10 @@ impl FromStr for NaiveMove {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "bit-codec",
+    derive(bit_codec::BitEncode, bit_codec::BitDecode)
+)]
 pub struct NaivePromotionMove {
     pub mv: NaiveMove,
     pub promotion: Option<Piece>,

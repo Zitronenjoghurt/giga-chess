@@ -3,6 +3,11 @@ use crate::prelude::Color;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "bit-codec",
+    derive(bit_codec::BitEncode, bit_codec::BitDecode)
+)]
+#[cfg_attr(feature = "bit-codec", bits(disc = 1))]
 pub enum GameOutcome {
     Decisive {
         winner: Color,
@@ -18,6 +23,11 @@ pub enum GameOutcome {
     feature = "strum",
     derive(strum::EnumIter, strum::EnumIs, strum::EnumCount)
 )]
+#[cfg_attr(
+    feature = "bit-codec",
+    derive(bit_codec::BitEncode, bit_codec::BitDecode)
+)]
+#[cfg_attr(feature = "bit-codec", bits(disc = 2))]
 pub enum DecisiveReason {
     /// One sides king was in check and had no legal moves to move it out of check.
     Checkmate,
@@ -34,6 +44,11 @@ pub enum DecisiveReason {
     feature = "strum",
     derive(strum::EnumIter, strum::EnumIs, strum::EnumCount)
 )]
+#[cfg_attr(
+    feature = "bit-codec",
+    derive(bit_codec::BitEncode, bit_codec::BitDecode)
+)]
+#[cfg_attr(feature = "bit-codec", bits(disc = 3))]
 pub enum DrawReason {
     /// One side had no legal moves but was not in check.
     Stalemate,

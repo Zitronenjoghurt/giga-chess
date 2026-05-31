@@ -18,7 +18,7 @@ pub fn magic_hash(magic_number: u64, occupied_blocking_mask: BitBoard) -> usize 
 #[cfg(feature = "rayon")]
 mod calc {
     use crate::core::bitboard::BitBoard;
-    use crate::moves::generator::magic::{magic_hash, INDEX_SIZE_BITS};
+    use crate::moves::generator::magic::{INDEX_SIZE_BITS, magic_hash};
     use crate::moves::generator::table::{
         build_bishop_blocks, build_occupancy_variations, build_rook_blocks,
         calculate_bishop_attack, calculate_rook_attack,

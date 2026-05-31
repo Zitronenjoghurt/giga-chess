@@ -1,10 +1,12 @@
-use crate::impl_bit_vec_header;
-use crate::storage::io::{BitDecode, BitEncode, BitReader, BitWriter};
 use std::fmt;
-use std::io::{Read, Write};
 use std::str::FromStr;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(
+    feature = "bit-codec",
+    derive(bit_codec::BitEncode, bit_codec::BitDecode)
+)]
+#[cfg_attr(feature = "bit-codec", bits(disc = 7))]
 #[repr(u8)]
 pub enum LichessPuzzleTheme {
     Short = 0b0000000,
@@ -337,23 +339,3 @@ impl FromStr for LichessPuzzleTheme {
         }
     }
 }
-
-impl BitEncode for LichessPuzzleTheme {
-    fn encode<W: Write>(&self, w: &mut BitWriter<W>) -> std::io::Result<()> {
-        w.write_bits(*self as u8, 7)
-    }
-}
-
-impl BitDecode for LichessPuzzleTheme {
-    fn decode<R: Read>(r: &mut BitReader<R>) -> std::io::Result<Self> {
-        let bits = r.read_bits(7)?;
-        LichessPuzzleTheme::from_bits(bits).ok_or_else(|| {
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("Invalid Lichess puzzle theme bits: {bits}"),
-            )
-        })
-    }
-}
-
-impl_bit_vec_header!(u8, LichessPuzzleTheme);

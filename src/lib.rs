@@ -11,4 +11,3 @@ pub mod prelude;
 pub mod session;
 #[cfg(feature = "stockfish-manager")]
 pub mod stockfish;
-pub mod storage;

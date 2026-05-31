@@ -62,3 +62,72 @@ impl IntoIterator for MoveList {
         self.moves.into_iter().take(self.len as usize)
     }
 }
+
+#[cfg(feature = "bit-codec")]
+mod codec {
+    pub use super::*;
+    use bit_codec::{BitDecode, BitEncode, BitReader, BitWriter};
+    use std::io::{Read, Write};
+
+    impl BitEncode for MoveList {
+        fn encode<W: Write>(&self, w: &mut BitWriter<W>) -> std::io::Result<()> {
+            w.write(&self.len)?;
+            for mv in &self.moves[..self.len as usize] {
+                w.write(mv)?;
+            }
+            Ok(())
+        }
+    }
+
+    impl BitDecode for MoveList {
+        fn decode<R: Read>(r: &mut BitReader<R>) -> std::io::Result<Self> {
+            let len: u8 = r.read()?;
+            let mut moves = [ChessMove::default(); 256];
+            for (i, mv) in moves.iter_mut().enumerate() {
+                if i >= len as usize {
+                    break;
+                }
+                *mv = r.read()?;
+            }
+            Ok(Self { moves, len })
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use crate::core::square::*;
+        use crate::prelude::{MoveKind, Piece};
+
+        #[test]
+        fn test_roundtrip() {
+            use bit_codec::{BitReader, BitWriter};
+
+            let mut list = MoveList::default();
+            list.push(ChessMove::new(Square::A2, Square::A4, MoveKind::Capture));
+            list.push(ChessMove::new(Square::E7, Square::E5, MoveKind::CastleKing));
+            list.push(ChessMove::new(
+                Square::D1,
+                Square::H5,
+                MoveKind::Promotion {
+                    piece: Piece::Queen,
+                    capture: true,
+                },
+            ));
+
+            let mut buf = Vec::new();
+            let mut w = BitWriter::new(&mut buf);
+            w.write(&list).unwrap();
+            w.flush().unwrap();
+            drop(w);
+
+            let mut r = BitReader::new(buf.as_slice());
+            let decoded: MoveList = r.read().unwrap();
+
+            assert_eq!(decoded.len, list.len);
+            for i in 0..list.len as usize {
+                assert_eq!(decoded.moves[i], list.moves[i]);
+            }
+        }
+    }
+}

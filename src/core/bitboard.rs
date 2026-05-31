@@ -1,13 +1,15 @@
 use crate::core::square::Square;
 use crate::core::u16_get_bit;
-use crate::storage::io::{BitDecode, BitEncode, BitReader, BitWriter};
 use std::fmt::{Display, Formatter};
-use std::io::{Read, Write};
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "bit-codec",
+    derive(bit_codec::BitEncode, bit_codec::BitDecode)
+)]
 #[repr(transparent)]
 /// An u64 where every bit represents one cell of the chess board.
 ///
@@ -381,18 +383,6 @@ impl Display for BitBoard {
             writeln!(f)?;
         }
         Ok(())
-    }
-}
-
-impl BitEncode for BitBoard {
-    fn encode<W: Write>(&self, w: &mut BitWriter<W>) -> std::io::Result<()> {
-        w.write(&self.0)
-    }
-}
-
-impl BitDecode for BitBoard {
-    fn decode<R: Read>(r: &mut BitReader<R>) -> std::io::Result<Self> {
-        Ok(Self(r.read()?))
     }
 }
 

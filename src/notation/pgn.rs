@@ -6,6 +6,10 @@ use std::fmt::Write;
 #[derive(Debug, Clone, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "bit-codec",
+    derive(bit_codec::BitEncode, bit_codec::BitDecode)
+)]
 pub struct PgnHeaders {
     pub event: Option<String>,
     pub site: Option<String>,

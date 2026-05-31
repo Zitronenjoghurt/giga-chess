@@ -1,7 +1,7 @@
 use crate::core::position::Position;
 use crate::error::{ChessError, SessionError, SessionResult};
-use crate::game::outcome::GameOutcome;
 use crate::game::Game;
+use crate::game::outcome::GameOutcome;
 use crate::prelude::{ChessMove, Color};
 use crate::session::action::SessionAction;
 use crate::session::clock::ChessClock;

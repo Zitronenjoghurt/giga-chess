@@ -1,6 +1,6 @@
+use giga_chess::stockfish::StockfishManager;
 use giga_chess::stockfish::command::{SfCommand, SfGo, SfPosition};
 use giga_chess::stockfish::event::SfEvent;
-use giga_chess::stockfish::StockfishManager;
 use std::io::{BufRead, BufReader, Write};
 use std::process::{Command, Stdio};
 
