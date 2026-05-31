@@ -1,3 +1,5 @@
+use crate::core::position::Position;
+use crate::moves::generator::MoveGenerator;
 use crate::prelude::{Piece, Square};
 use std::fmt::{Display, Formatter};
 
@@ -53,6 +55,21 @@ impl ChessMove {
 
     pub fn is_promotion(&self) -> bool {
         (self.0 & 0b1000) != 0
+    }
+
+    pub fn from_position(
+        position: &Position,
+        from: Square,
+        to: Square,
+        promotion: Option<Piece>,
+    ) -> Option<ChessMove> {
+        MoveGenerator::get()
+            .generate(position)
+            .iter()
+            .find(|mv| {
+                mv.from() == from && mv.to() == to && mv.flags().promotion_piece() == promotion
+            })
+            .copied()
     }
 }
 

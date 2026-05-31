@@ -1,5 +1,6 @@
+use crate::core::position::Position;
 use crate::error::FenError;
-use crate::prelude::{Piece, Square};
+use crate::prelude::{ChessMove, Piece, Square};
 use std::str::FromStr;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -46,6 +47,12 @@ impl FromStr for NaiveMove {
 pub struct NaivePromotionMove {
     pub mv: NaiveMove,
     pub promotion: Option<Piece>,
+}
+
+impl NaivePromotionMove {
+    pub fn get_move(&self, position: &Position) -> Option<ChessMove> {
+        ChessMove::from_position(position, self.mv.from, self.mv.to, self.promotion)
+    }
 }
 
 impl FromStr for NaivePromotionMove {

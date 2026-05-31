@@ -1,6 +1,7 @@
 use crate::core::puzzle::Puzzle;
 use crate::lichess::parser::LichessPuzzleEntry;
 use crate::lichess::puzzle::LichessPuzzle;
+use crate::prelude::ChessMove;
 use bit_codec::{BitDecode, BitReader, BitWriter};
 
 #[derive(Clone, Eq, PartialEq, Hash)]
@@ -28,9 +29,24 @@ impl LichessPuzzleArchive {
                             .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
                     })
                     .collect::<Result<Vec<_>, _>>()?;
+
+                let mut moves = entry
+                    .moves
+                    .into_iter()
+                    .map(|m| {
+                        m.get_move(&entry.pos).ok_or_else(|| {
+                            std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid move")
+                        })
+                    })
+                    .collect::<Result<Vec<ChessMove>, _>>()?;
+
+                let Some(first_move) = moves.pop() else {
+                    continue;
+                };
+
                 let puzzle = LichessPuzzle {
                     id: entry.id,
-                    puzzle: Puzzle::new(entry.pos, entry.moves),
+                    puzzle: Puzzle::new(entry.pos, first_move, moves),
                     themes,
                     rating: entry.rating as u16,
                     rating_deviation: entry.rating_deviation as u16,
